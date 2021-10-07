@@ -3,8 +3,8 @@
 //Escreve 32kb de VAZIO no arquivo, o equivalente a um cluster inteiro não inizializado (sem nome), com um END_OF_FILE no início da área de dados
 void initCluster(FILE* arquivo) {
     int i;
-    char c = VAZIO;
-    for (i = 0; i < sizeof(CLUSTER); i++) { //metadados com VAZIO
+    char c = '\0';
+    for (i = 0; i < sizeof(CLUSTER); i++) { //metadados com 00
         fwrite(&c, sizeof(char), 1, arquivo);
     }
     c = END_OF_FILE;
@@ -84,9 +84,27 @@ FS initFS() {
     return fileSystem;
 }
 
+/*
+==== FUNÇÕES UTILITÁRIAS ====
+*/
 
-//Bruno
+//Bruno: retorna o índice do diretorio a partir do caminho
 unsigned char getDirIndex(char* path, FS fileSystem) {}
+
+//Leo: posiciona o ponteiro do arquivo no início da área de dados do cluster
+void setPointerToCluster(FS fileSystem, unsigned char indice) {}
+
+//Leo: troca FE por itemIndex, e escreve FE logo dps
+void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) {}
+
+//retorna o indice do primeiro cluster vazio na tabela
+unsigned char findNextOpenCluster(FS fileSystem) {}
+
+
+/*
+==== FUNÇÕES DE COMANDOS ====
+*/
+
 
 //Bruno
 void cd(char* path, FS fileSystem) {}
@@ -104,7 +122,22 @@ void mkdir(char* name, FS fileSystem) {}
 void mkfile(char* name, FS fileSystem) {}
 
 //Tiago
-void edit(char* path, char* text, FS fileSystem) {}
+void edit(char* path, char* text, FS fileSystem) {
+    /*
+    IDEIA/sugestao:
+
+    if (sizeof(text) < TAM_CLUSTER - sizeof(CLUSTER)) {
+        escreve normalmente
+    }
+    else {
+        separa em duas strings: string A com o max de chars que cabem no cluster, e string B com o resto
+        escreve string A aqui
+        acha o prox cluster
+        chama essa funcao recursivamente pro prox cluster
+    }
+
+*/
+}
 
 //Arthur
 void move(char* srcPath, char* destPath, FS fileSystem) {}

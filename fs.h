@@ -13,6 +13,8 @@
 
 #define NOME_ARQUIVO "data.bin"
 
+
+
 typedef struct {
     char workingDir[221];
     unsigned char workingDirIndex;

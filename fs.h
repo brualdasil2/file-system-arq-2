@@ -11,6 +11,8 @@
 #define I_INDICE 8
 #define I_ROOT 264
 
+#define NOME_ARQUIVO "data.bin"
+
 typedef struct {
     char workingDir[221];
     unsigned char workingDirIndex;

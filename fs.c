@@ -31,7 +31,7 @@ FS initFS() {
     FILE* arquivo;
     FS fileSystem;
     int i;
-    if (arquivo = fileExists("data.bin")) {
+    if (arquivo = fileExists(NOME_ARQUIVO)) {
         //se o arquivo já existe, só lê os dados e salva no FS
         fread(&(fileSystem.meta), sizeof(fileSystem.meta), 1, arquivo); //lê metadados
         fileSystem.indice = (char*)(malloc(sizeof(char)*TAM_INDICE)); //aloca espaço para o vetor de indices
@@ -49,7 +49,7 @@ FS initFS() {
         META_PROGRAMA meta = {TAM_INDICE, TAM_CLUSTER, I_INDICE, I_ROOT};
         char* indice = (char*)(malloc(sizeof(char)*TAM_INDICE)); //aloca espaço para o vetor de indices
         CLUSTER* clusters = (CLUSTER*)(malloc(sizeof(CLUSTER)*TAM_INDICE)); //aloca espaço para o vetor de clusters
-        arquivo = fopen("data.bin", "wb+");
+        arquivo = fopen(NOME_ARQUIVO, "wb+");
         fwrite(&meta, sizeof(meta), 1, arquivo); //escreve metadados
         char c = END_OF_FILE;
         fwrite(&c, sizeof(char), 1, arquivo); //escreve o root no indice
@@ -65,10 +65,10 @@ FS initFS() {
         c = END_OF_FILE;
         fwrite(&c, sizeof(char), 1, arquivo); //escreve end of file no inicio da area de dados do root
         c = VAZIO;
-        for (i = 0; i < TAM_CLUSTER - sizeof(CLUSTER) - 1; i++) { //inicializa o cluster root com vazio
+        for (i = sizeof(CLUSTER) + 1; i < TAM_CLUSTER; i++) { //inicializa o cluster root com vazio
             fwrite(&c, sizeof(char), 1, arquivo);
         }
-        for (i = 0; i < TAM_INDICE - 1; i++) { //inicializa o resto dos clusters
+        for (i = 1; i < TAM_INDICE; i++) { //inicializa o resto dos clusters
             initCluster(arquivo);
         }
         //salva dados pra retornar
@@ -83,6 +83,7 @@ FS initFS() {
 
     return fileSystem;
 }
+
 
 //Bruno
 unsigned char getDirIndex(char* path, FS fileSystem) {}

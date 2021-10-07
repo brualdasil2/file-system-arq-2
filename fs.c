@@ -20,9 +20,10 @@ FILE* fileExists(char* filename) {
     FILE* file;
     if (file = fopen(filename, "rb+")) {
         return file;
+        fclose(file);
+    }else{
+        return NULL;
     }
-    fclose(file);
-    return NULL;
 }
 
 //Inicializa o arquivo e as estruturas do FS

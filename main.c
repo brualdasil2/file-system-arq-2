@@ -3,6 +3,7 @@
 #include "fs.h"
 
 int main() {
-    printf("Hello World!");
+    FS fileSystem = initFS();
+
     return 0;
 }

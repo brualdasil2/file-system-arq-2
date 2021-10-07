@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define VAZIO 0xFF
 #define END_OF_FILE 0xFE
@@ -10,12 +11,14 @@
 #define I_INDICE 8
 #define I_ROOT 264
 
+#define NOME_ARQUIVO "data.bin"
+
+
+
 typedef struct {
     char workingDir[221];
-    char workingDirIndex;
+    unsigned char workingDirIndex;
 } DIR_STATE;
-
-DIR_STATE dirState;
 
 typedef struct {
     char nome[20];
@@ -30,14 +33,11 @@ typedef struct {
 } META_PROGRAMA;
 
 typedef struct {
-    char* tabela;
-} INDICE;
-
-typedef struct {
     META_PROGRAMA meta;
-    INDICE indice;
-    CLUSTER clusters[TAM_INDICE];
+    char* indice;
+    CLUSTER* clusters;
     FILE* arquivo;
+    DIR_STATE dirState;
 } FS;
 
 void initCluster();
@@ -60,8 +60,4 @@ void edit(char* path, char* text, FS fileSystem);
 
 void move(char* srcPath, char* destPath, FS fileSystem);
 
-void rename(char* path, char* name, FS fileSystem);
-
-
-
-
+void renameFile(char* path, char* name, FS fileSystem);

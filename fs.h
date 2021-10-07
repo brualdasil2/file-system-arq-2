@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define VAZIO 0xFF
 #define END_OF_FILE 0xFE
@@ -14,8 +15,6 @@ typedef struct {
     char workingDir[221];
     unsigned char workingDirIndex;
 } DIR_STATE;
-
-DIR_STATE dirState;
 
 typedef struct {
     char nome[20];
@@ -34,6 +33,7 @@ typedef struct {
     char* indice;
     CLUSTER* clusters;
     FILE* arquivo;
+    DIR_STATE dirState;
 } FS;
 
 void initCluster();
@@ -57,7 +57,3 @@ void edit(char* path, char* text, FS fileSystem);
 void move(char* srcPath, char* destPath, FS fileSystem);
 
 void renameFile(char* path, char* name, FS fileSystem);
-
-
-
-

@@ -1,5 +1,4 @@
 #include "fs.h"
-#include <string.h>
 
 //Escreve 32kb de VAZIO no arquivo, o equivalente a um cluster inteiro não inizializado (sem nome), com um END_OF_FILE no início da área de dados
 void initCluster(FILE* arquivo) {
@@ -78,8 +77,8 @@ FS initFS() {
         fileSystem.arquivo = arquivo;
     }
     //setta estado do diretório atual
-    dirState.workingDirIndex = 0;
-    strcpy(dirState.workingDir, "root");
+    fileSystem.dirState.workingDirIndex = 0;
+    strcpy(fileSystem.dirState.workingDir, "root");
 
     return fileSystem;
 }

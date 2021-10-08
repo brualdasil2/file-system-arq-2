@@ -46,7 +46,7 @@ FS initFS();
 
 unsigned char getDirIndex(char* path, FS fileSystem);
 
-void cd(char* path, FS fileSystem);
+void cd(char* path, FS* fileSystem);
 
 void dir(FS fileSystem);
 

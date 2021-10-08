@@ -127,7 +127,9 @@ unsigned char getDirIndex(char* path, FS fileSystem) {
 }
 
 //Leo: posiciona o ponteiro do arquivo no início da área de dados do cluster
-void setPointerToCluster(FS fileSystem, unsigned char indice) {}
+void setPointerToCluster(FS fileSystem, unsigned char indice) {
+    fseek(fileSystem.arquivo, sizeof(fileSystem.meta) + TAM_INDICE + indice*TAM_CLUSTER + sizeof(CLUSTER), SEEK_SET);
+}
 
 //Leo: troca FE por itemIndex, e escreve FE logo dps
 void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) {}

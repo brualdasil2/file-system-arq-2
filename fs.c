@@ -87,9 +87,6 @@ FS initFS() {
 /*
 ==== FUNÇÕES UTILITÁRIAS ====
 */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 void setPointerToCluster(FS fileSystem, unsigned char indice); //delcaração pra poder usar
 

@@ -61,3 +61,5 @@ void edit(char* path, char* text, FS fileSystem);
 void move(char* srcPath, char* destPath, FS fileSystem);
 
 void renameFile(char* path, char* name, FS fileSystem);
+
+unsigned char findNextOpenCluster(FS fileSystem);

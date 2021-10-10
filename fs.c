@@ -132,7 +132,18 @@ void setPointerToCluster(FS fileSystem, unsigned char indice) {
 void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) {}
 
 //retorna o indice do primeiro cluster vazio na tabela
-unsigned char findNextOpenCluster(FS fileSystem) {}
+unsigned char findNextOpenCluster(FS fileSystem) {
+    int i = 0;
+    while(i<TAM_INDICE){
+        printf("b\n");
+        if(fileSystem.indice[i] == '\xFF'){
+            printf("a\n");
+            return i;
+        }
+        i++;
+    }
+    return CORROMPIDO;
+}
 
 
 /*

@@ -88,11 +88,45 @@ FS initFS() {
 ==== FUNÇÕES UTILITÁRIAS ====
 */
 
-//Bruno: retorna o índice do diretorio a partir do caminho
-unsigned char getDirIndex(char* path, FS fileSystem) {}
+void setPointerToCluster(FS fileSystem, unsigned char indice); //delcaração pra poder usar
+
+//Retorna o índice do diretorio a partir do caminho, e VAZIO caso o caminho seja inválido
+unsigned char getDirIndex(char* path, FS fileSystem) {
+    char copiedPath[200]; //cópia da string (declarada localmente) pra funcionar no strtok
+    strcpy(copiedPath, path);
+    char *dirName = strtok(copiedPath, "/"); //armazena nome do diretório a ser encontrado
+    if (strcmp(dirName, "root")) { //testa se o primeiro dir é o root
+        return VAZIO;
+    }
+    dirName = strtok(NULL, "/"); //pega o nome do primeiro subdiretório
+    unsigned char currDir = 0x00, c;
+    int foundDir;
+    while (dirName) { //percorre cada subdiretório do caminho
+        setPointerToCluster(fileSystem, currDir);
+        foundDir = 0;
+        while(!foundDir) { //percorre cada byte da área de dados do diretório atual
+            fread(&c, sizeof(unsigned char), 1, fileSystem.arquivo);
+            if (c != END_OF_FILE) {
+                if (!strcmp(dirName, fileSystem.clusters[c].nome)) { //verifica se é o nome do dir buscado, e se é do tipo dir
+                    if (!strcmp("dir", fileSystem.clusters[c].tipo)) {
+                        currDir = c;
+                        foundDir = 1;
+                    }
+                }
+            }
+            else {
+                return VAZIO; //se chegou ao fim e não encontrou, o caminho passado é inválido
+            }
+        }
+        dirName = strtok(NULL, "/"); //só chega aqui se encontrou o dir buscado, salva dir seguinte a buscar
+    }
+    return currDir;
+}
 
 //Leo: posiciona o ponteiro do arquivo no início da área de dados do cluster
-void setPointerToCluster(FS fileSystem, unsigned char indice) {}
+void setPointerToCluster(FS fileSystem, unsigned char indice) {
+    fseek(fileSystem.arquivo, sizeof(fileSystem.meta) + TAM_INDICE + indice*TAM_CLUSTER + sizeof(CLUSTER), SEEK_SET);
+}
 
 //Leo: troca FE por itemIndex, e escreve FE logo dps
 void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) {}
@@ -106,8 +140,17 @@ unsigned char findNextOpenCluster(FS fileSystem) {}
 */
 
 
-//Bruno
-void cd(char* path, FS fileSystem) {}
+//Altera o diretório atual a partir do caminho, se ele existir
+void cd(char* path, FS* fileSystem) {
+    unsigned char currDir = getDirIndex(path, *fileSystem);
+    if (currDir == VAZIO) {
+        printf("Esse diretorio nao existe\n");
+    }
+    else {
+        fileSystem->dirState.workingDirIndex = currDir;
+        strcpy(fileSystem->dirState.workingDir, path);
+    }
+}
 
 //Bruno
 void dir(FS fileSystem) {}

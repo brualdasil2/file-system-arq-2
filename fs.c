@@ -88,6 +88,19 @@ FS initFS() {
 ==== FUNÇÕES UTILITÁRIAS ====
 */
 
+//escreve todos os dados do FS no arquivo de memória
+void saveFS(FS fileSystem) {
+    int i;
+    fseek(fileSystem.arquivo, 0, SEEK_SET); //vai pro inicio do arquivo
+    fwrite(&(fileSystem.meta), sizeof(fileSystem.meta), 1, fileSystem.arquivo);
+    fwrite(fileSystem.indice, TAM_INDICE, 1, fileSystem.arquivo);
+    for (i = 0; i < TAM_INDICE; i++) {
+        fwrite(&(fileSystem.clusters[i]), sizeof(CLUSTER), 1, fileSystem.arquivo); //escreve meta do cluster
+        fseek(fileSystem.arquivo, TAM_CLUSTER - sizeof(CLUSTER), SEEK_CUR); //pula pro próximo
+    }
+}
+
+
 void setPointerToCluster(FS fileSystem, unsigned char indice); //delcaração pra poder usar
 
 //Retorna o índice do diretorio a partir do caminho, e VAZIO caso o caminho seja inválido

@@ -129,7 +129,21 @@ void setPointerToCluster(FS fileSystem, unsigned char indice) {
 }
 
 //Leo: troca FE por itemIndex, e escreve FE logo dps
-void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) {}
+void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) {
+    char item;
+    char auxChar;
+    setPointerToCluster(fileSystem, dirIndex); // coloca o pointer no cluster
+    // acha o fim do diretorio
+    while(item != '\xFE'){
+        fread(&item, sizeof(char), 1, fileSystem.arquivo);
+    }
+    //coloca mais um indice(dirIndex) e poe o FE
+    fseek(fileSystem.arquivo, -1*sizeof(char), SEEK_CUR);
+    auxChar = itemIndex;
+    fwrite(&auxChar, sizeof(char), 1, fileSystem.arquivo);
+    auxChar = END_OF_FILE;
+    fwrite(&auxChar, sizeof(char), 1, fileSystem.arquivo);
+}
 
 //retorna o indice do primeiro cluster vazio na tabela
 unsigned char findNextOpenCluster(FS fileSystem) {
@@ -170,10 +184,16 @@ void dir(FS fileSystem) {}
 void rm(char* path, FS fileSystem) {}
 
 //Leo
-void mkdir(char* name, FS fileSystem) {}
+void mkdir(char* name, FS fileSystem) {
+    unsigned char nextOpenCluster = findNextOpenCluster(fileSystem);
+    fileSystem.indice[nextOpenCluster] = END_OF_FILE;
+    appendItem(fileSystem, fileSystem.dirState.workingDirIndex ,nextOpenCluster);
+    // ainda nao pronta
+    
+}
 
 //Leo
-void mkfile(char* name, FS fileSystem) {}
+void mkfile(char* name, char* type, FS fileSystem) {}
 
 //Tiago
 void edit(char* path, char* text, FS fileSystem) {

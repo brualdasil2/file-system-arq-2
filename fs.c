@@ -196,31 +196,67 @@ void dir(FS fileSystem) {}
 void rm(char* path, FS fileSystem) {}
 
 //Leo
+
+void separatePaths(char* fullPath, char* path, char* itemName){
+    int i, j, lastBarIndex;
+    i = j = lastBarIndex = 0;
+    while (fullPath[i] != '\0'){
+            if(fullPath[i]=='/'){
+                lastBarIndex = i;
+            }
+            i++;   
+        }
+        i=0;
+        while(i<lastBarIndex){
+            path[i]=fullPath[i];
+            i++;
+        }
+        i++;
+        while(fullPath[i]!= '\0'){
+            itemName[j] = fullPath[i];
+            i++;
+            j++;
+        }
+}
+
 void mkdir(char* name, FS fileSystem) {
+    char dirName[200] = "";
     unsigned char clusterIndex = findNextOpenCluster(fileSystem);
     fileSystem.indice[clusterIndex] = END_OF_FILE;
     if (name[0] == '/'){
-        // se o caminho eh absoluto ...
-        return;
+        char fullPath[200] = "";
+        char path[200] = "";
+        strcpy(fullPath, name);
+        separatePaths(fullPath, path,dirName);
+        int clusterOfDirIndex = getDirIndex(path, fileSystem);
+        appendItem(fileSystem, clusterOfDirIndex, clusterIndex);
     }else{
+        strcpy(dirName,name);
         appendItem(fileSystem, fileSystem.dirState.workingDirIndex ,clusterIndex);
     }
-    strcpy(fileSystem.clusters[clusterIndex].nome, name);
+    strcpy(fileSystem.clusters[clusterIndex].nome, dirName);
     strcpy(fileSystem.clusters[clusterIndex].tipo, "dir");
     saveFS(fileSystem);
 }
 
 //Leo
-void mkfile(char* name, char* type, FS fileSystem) {
+void make(char* name, char* type, FS fileSystem) {
+    char itemName[200] = "";
     unsigned char clusterIndex = findNextOpenCluster(fileSystem);
     fileSystem.indice[clusterIndex] = END_OF_FILE;
     if (name[0] == '/'){
-        // se o caminho eh absoluto ...
-        return;
+        char fullPath[200] = "";
+        char path[200] = "";
+        strcpy(fullPath, name);
+        separatePaths(fullPath, path,itemName);
+        int clusterOfDirIndex = getDirIndex(path, fileSystem);
+        appendItem(fileSystem, clusterOfDirIndex, clusterIndex);
+        
     }else{
+        strcpy(itemName, name);
         appendItem(fileSystem, fileSystem.dirState.workingDirIndex ,clusterIndex);
     }
-    strcpy(fileSystem.clusters[clusterIndex].nome, name);
+    strcpy(fileSystem.clusters[clusterIndex].nome, itemName);
     strcpy(fileSystem.clusters[clusterIndex].tipo, type);
     saveFS(fileSystem);
 }

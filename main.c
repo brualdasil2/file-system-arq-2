@@ -4,10 +4,10 @@
 
 int main() {
     FS fileSystem = initFS();
-    mkdir("dir 1", fileSystem);
-    mkdir("dir 2", fileSystem);
-    mkfile("test", "txt", fileSystem);
-    mkfile("test2", "txt", fileSystem);
+    make("dir1","dir", fileSystem);
+    make("/root/dir1/dir2","dir", fileSystem);
+    make("/root/dir1/dir2/test","txt", fileSystem);
+    make("testRoot","txt", fileSystem);
     fclose(fileSystem.arquivo);
     return 0;
 }

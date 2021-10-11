@@ -4,7 +4,10 @@
 
 int main() {
     FS fileSystem = initFS();
-    appendItem(fileSystem,1,30);
-
+    mkdir("dir 1", fileSystem);
+    mkdir("dir 2", fileSystem);
+    mkfile("test", "txt", fileSystem);
+    mkfile("test2", "txt", fileSystem);
+    fclose(fileSystem.arquivo);
     return 0;
 }

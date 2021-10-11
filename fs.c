@@ -88,6 +88,20 @@ FS initFS() {
 ==== FUNÇÕES UTILITÁRIAS ====
 */
 
+//escreve todos os dados do FS no arquivo de memória
+void saveFS(FS fileSystem) {
+    int i;
+    fseek(fileSystem.arquivo, 0, SEEK_SET); //vai pro inicio do arquivo
+    fwrite(&(fileSystem.meta), sizeof(fileSystem.meta), 1, fileSystem.arquivo);
+    fwrite(fileSystem.indice, TAM_INDICE, 1, fileSystem.arquivo);
+    for (i = 0; i < TAM_INDICE; i++) {
+        fwrite(&(fileSystem.clusters[i]), sizeof(CLUSTER), 1, fileSystem.arquivo); //escreve meta do cluster
+        fseek(fileSystem.arquivo, TAM_CLUSTER - sizeof(CLUSTER), SEEK_CUR); //pula pro próximo
+    }
+}
+
+
+
 void setPointerToCluster(FS fileSystem, unsigned char indice); //delcaração pra poder usar
 
 //Retorna o índice do diretorio a partir do caminho, e VAZIO caso o caminho seja inválido
@@ -130,7 +144,7 @@ void setPointerToCluster(FS fileSystem, unsigned char indice) {
 
 //Leo: troca FE por itemIndex, e escreve FE logo dps
 void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) {
-    char item;
+    char item = CORROMPIDO;
     char auxChar;
     setPointerToCluster(fileSystem, dirIndex); // coloca o pointer no cluster
     // acha o fim do diretorio
@@ -149,9 +163,7 @@ void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) 
 unsigned char findNextOpenCluster(FS fileSystem) {
     int i = 0;
     while(i<TAM_INDICE){
-        printf("b\n");
-        if(fileSystem.indice[i] == '\xFF'){
-            printf("a\n");
+        if(fileSystem.indice[i] == '\xFF'){ // == VAZIO
             return i;
         }
         i++;
@@ -185,15 +197,33 @@ void rm(char* path, FS fileSystem) {}
 
 //Leo
 void mkdir(char* name, FS fileSystem) {
-    unsigned char nextOpenCluster = findNextOpenCluster(fileSystem);
-    fileSystem.indice[nextOpenCluster] = END_OF_FILE;
-    appendItem(fileSystem, fileSystem.dirState.workingDirIndex ,nextOpenCluster);
-    // ainda nao pronta
-    
+    unsigned char clusterIndex = findNextOpenCluster(fileSystem);
+    fileSystem.indice[clusterIndex] = END_OF_FILE;
+    if (name[0] == '/'){
+        // se o caminho eh absoluto ...
+        return;
+    }else{
+        appendItem(fileSystem, fileSystem.dirState.workingDirIndex ,clusterIndex);
+    }
+    strcpy(fileSystem.clusters[clusterIndex].nome, name);
+    strcpy(fileSystem.clusters[clusterIndex].tipo, "dir");
+    saveFS(fileSystem);
 }
 
 //Leo
-void mkfile(char* name, char* type, FS fileSystem) {}
+void mkfile(char* name, char* type, FS fileSystem) {
+    unsigned char clusterIndex = findNextOpenCluster(fileSystem);
+    fileSystem.indice[clusterIndex] = END_OF_FILE;
+    if (name[0] == '/'){
+        // se o caminho eh absoluto ...
+        return;
+    }else{
+        appendItem(fileSystem, fileSystem.dirState.workingDirIndex ,clusterIndex);
+    }
+    strcpy(fileSystem.clusters[clusterIndex].nome, name);
+    strcpy(fileSystem.clusters[clusterIndex].tipo, type);
+    saveFS(fileSystem);
+}
 
 //Tiago
 void edit(char* path, char* text, FS fileSystem) {

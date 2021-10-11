@@ -65,3 +65,5 @@ void renameFile(char* path, char* name, FS fileSystem);
 unsigned char findNextOpenCluster(FS fileSystem);
 
 void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex);
+
+void saveFS(FS fileSystem);

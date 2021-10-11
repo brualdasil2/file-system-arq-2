@@ -88,7 +88,10 @@ FS initFS() {
 ==== FUNÇÕES UTILITÁRIAS ====
 */
 
-void setPointerToCluster(FS fileSystem, unsigned char indice); //delcaração pra poder usar
+void setPointerToCluster(FS fileSystem, unsigned char indice); //declaração pra poder usar
+int dirIsEmpty(unsigned char dirIndex, FS fileSystem);
+unsigned char isInDir(unsigned char dirIndex, char* archiveName, FS fileSystem);
+void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned char* lowerArchiveIndex, FS fileSystem);
 
 //Retorna o índice do diretorio a partir do caminho, e VAZIO caso o caminho seja inválido
 unsigned char getDirIndex(char* path, FS fileSystem) {
@@ -134,6 +137,45 @@ void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) 
 //retorna o indice do primeiro cluster vazio na tabela
 unsigned char findNextOpenCluster(FS fileSystem) {}
 
+//Testa se o diretório está vazio.
+int dirIsEmpty(unsigned char dirIndex, FS fileSystem) {
+    unsigned char c = VAZIO;
+    setPointerToCluster(fileSystem, dirIndex);
+    while(1) {
+        fread(&c, sizeof(unsigned char), 1, fileSystem.arquivo);
+        if (c == END_OF_FILE) return 1;
+        else if (c != VAZIO) return 0;
+    }
+}
+//Procura no diretório indicado um arquivo com nome específico.
+unsigned char isInDir(unsigned char dirIndex, char* archiveName, FS fileSystem) {
+    unsigned char c = VAZIO;
+    setPointerToCluster(fileSystem, dirIndex);
+    while(c!=END_OF_FILE) {
+        fread(&c, sizeof(unsigned char), 1, fileSystem.arquivo);
+        if (!strcmp(archiveName, fileSystem.clusters[c].nome)) return c;
+    }
+    return VAZIO;
+}
+//Guarda o valor dos indíces do arquivo inferior(último no path) e arquivo superior(penúltimo no path), altera para VAZIO se inválido.
+void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned char* lowerArchiveIndex, FS fileSystem) {
+    char* breakPoint;
+    char* upperPath;
+    char* lowerArchive;
+
+    strcpy(upperPath,path);
+
+    breakPoint = strrchr(upperPath, '/');
+    breakPoint[0] = '\0';
+    lowerArchive = breakPoint + 1;
+
+    *upperArchiveIndex = getDirIndex(upperPath, fileSystem);
+    *lowerArchiveIndex = (unsigned char)VAZIO;
+    if (lowerArchive[strlen(lowerArchive) - 4] == '.') {
+       lowerArchive[strlen(lowerArchive) - 4] = '\0';
+    }
+    if (upperPath[0] != '\0' && lowerArchive[0] != '\0') *lowerArchiveIndex = isInDir(*upperArchiveIndex,lowerArchive,fileSystem);
+}
 
 /*
 ==== FUNÇÕES DE COMANDOS ====
@@ -156,7 +198,20 @@ void cd(char* path, FS* fileSystem) {
 void dir(FS fileSystem) {}
 
 //Arthur
-void rm(char* path, FS fileSystem) {}
+void rm(char* path, FS* fileSystem) {
+    unsigned char upper,lower;
+
+    getLastTwoIndex(path, &upper, &lower, *fileSystem);
+    if((upper != VAZIO && lower != VAZIO) && (fileSystem->clusters[lower].tipo != "dir" || dirIsEmpty(lower, *fileSystem))){
+        isInDir(upper, fileSystem->clusters[lower].nome, *fileSystem);
+        fseek(fileSystem->arquivo, (long int)(-1*sizeof(char)), SEEK_CUR);
+        putc(VAZIO,fileSystem->arquivo);
+
+        fileSystem->indice[lower] = VAZIO;
+        saveFS(*fileSystem);
+    }
+    else printf("Caminho Invalido.\n");
+}
 
 //Leo
 void mkdir(char* name, FS fileSystem) {}
@@ -183,7 +238,13 @@ void edit(char* path, char* text, FS fileSystem) {
 }
 
 //Arthur
-void move(char* srcPath, char* destPath, FS fileSystem) {}
+void move(char* path, char* destPath, FS fileSystem) {}
 
 //Tiago
 void renameFile(char* path, char* name, FS fileSystem) {}
+
+int main() {
+    FS fileSystem = initFS();
+    
+    return 0;
+}

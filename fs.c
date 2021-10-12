@@ -145,7 +145,7 @@ void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) 
 //retorna o indice do primeiro cluster vazio na tabela
 unsigned char findNextOpenCluster(FS fileSystem) {}
 
-//Testa se o diretório está vazio.
+//Arthur: Testa se o diretório está vazio.
 int dirIsEmpty(unsigned char dirIndex, FS fileSystem) {
     unsigned char c;
     setPointerToCluster(fileSystem, dirIndex);
@@ -155,34 +155,39 @@ int dirIsEmpty(unsigned char dirIndex, FS fileSystem) {
         else if (c != VAZIO) return 0;
     }
 }
-//Procura no diretório indicado um arquivo com nome específico.
-unsigned char isInDir(unsigned char dirIndex, char* archiveName, FS fileSystem) {
+//Arthur: Procura no diretório indicado um arquivo com nome e tipo específico.
+unsigned char isInDir(unsigned char dirIndex, char* archiveName, char* archiveType, FS fileSystem) {
     unsigned char c = VAZIO;
     setPointerToCluster(fileSystem, dirIndex);
     while(c!=END_OF_FILE) {
         fread(&c, sizeof(unsigned char), 1, fileSystem.arquivo);
-        if (!strcmp(archiveName, fileSystem.clusters[c].nome)) return c;
+        if (!strcmp(archiveName, fileSystem.clusters[c].nome) && !strcmp(archiveType, fileSystem.clusters[c].tipo)) 
+            return c;
     }
     return VAZIO;
 }
-//Guarda o valor dos indíces do arquivo inferior(último no path) e arquivo superior(penúltimo no path), altera para VAZIO se inválido.
+//Arthur: Guarda o valor dos indíces do arquivo inferior(último no path) e arquivo superior(penúltimo no path), altera para VAZIO se inválido.
 void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned char* lowerArchiveIndex, FS fileSystem) {
     char* breakPoint;
-    char* upperPath;
-    char* lowerArchive;
+    char* lowerArchiveName;
+    char lowerArchiveType[4];
+    char upperPath[strlen(path)];
 
     strcpy(upperPath,path);
-    printf("%s\n", upperPath);
-
     breakPoint = strrchr(upperPath, '/');
-    breakPoint[0] = '\0';
-    lowerArchive = breakPoint + 1;
-
-    *upperArchiveIndex = getDirIndex(upperPath, fileSystem);
+    if (breakPoint != NULL) {
+        breakPoint[0] = '\0';
+        lowerArchiveName = breakPoint + 1;
+    }
+    if (upperPath[0] != '\0') *upperArchiveIndex = getDirIndex(upperPath, fileSystem); //getDirIndex da crash se receber '\0'
     *lowerArchiveIndex = (unsigned char)VAZIO;
 
-    if (lowerArchive[strlen(lowerArchive) - 4] == '.') lowerArchive[strlen(lowerArchive) - 4] = '\0';
-    if (upperPath[0] != '\0' && lowerArchive[0] != '\0') *lowerArchiveIndex = isInDir(*upperArchiveIndex,lowerArchive,fileSystem);
+    if (lowerArchiveName[strlen(lowerArchiveName) - 4] == '.') {
+        strcpy(lowerArchiveType, lowerArchiveName + strlen(lowerArchiveName) - 3);
+        lowerArchiveName[strlen(lowerArchiveName) - 4] = '\0';
+    }
+    else strcpy(lowerArchiveType, "dir");
+    if (breakPoint != NULL && upperPath[0] != '\0' && lowerArchiveName[0] != '\0') *lowerArchiveIndex = isInDir(*upperArchiveIndex,lowerArchiveName, lowerArchiveType, fileSystem);
 }
 
 /*
@@ -205,19 +210,14 @@ void cd(char* path, FS* fileSystem) {
 //Bruno
 void dir(FS fileSystem) {}
 
-//Arthur
+//Arthur: Faz a remoção de um arquivo.
 void rm(char* path, FS* fileSystem) {
     unsigned char upper,lower;
     upper = lower = VAZIO;
 
     getLastTwoIndex(path, &upper, &lower, *fileSystem);
-    printf("upper: %x lower: %x\n", upper, lower);
-    if(dirIsEmpty(lower, *fileSystem)) printf("empty\n");
-    else printf("not empty\n");
     if((upper != VAZIO && lower != VAZIO) && (!(strcmp("dir",fileSystem->clusters[lower].tipo) == 0) || dirIsEmpty(lower, *fileSystem))){
-        printf("lowerNome: %s\n", fileSystem->clusters[lower].nome);
-        printf("lowerTipo: %s\n", fileSystem->clusters[lower].tipo);
-        isInDir(upper, fileSystem->clusters[lower].nome, *fileSystem);
+        isInDir(upper, fileSystem->clusters[lower].nome, fileSystem->clusters[lower].tipo, *fileSystem);
         fseek(fileSystem->arquivo, (long int)(-1*sizeof(char)), SEEK_CUR);
         putc(VAZIO,fileSystem->arquivo);
 

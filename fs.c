@@ -101,6 +101,10 @@ void saveFS(FS fileSystem) {
 }
 
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> mkdir/file
 void setPointerToCluster(FS fileSystem, unsigned char indice); //delcaração pra poder usar
 
 //Retorna o índice do diretorio a partir do caminho, e VAZIO caso o caminho seja inválido
@@ -142,10 +146,33 @@ void setPointerToCluster(FS fileSystem, unsigned char indice) {
 }
 
 //Leo: troca FE por itemIndex, e escreve FE logo dps
-void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) {}
+void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) {
+    char item = CORROMPIDO;
+    char auxChar;
+    setPointerToCluster(fileSystem, dirIndex); // coloca o pointer no cluster
+    // acha o fim do diretorio
+    while(item != '\xFE'){
+        fread(&item, sizeof(char), 1, fileSystem.arquivo);
+    }
+    //coloca mais um indice(dirIndex) e poe o FE
+    fseek(fileSystem.arquivo, -1*sizeof(char), SEEK_CUR);
+    auxChar = itemIndex;
+    fwrite(&auxChar, sizeof(char), 1, fileSystem.arquivo);
+    auxChar = END_OF_FILE;
+    fwrite(&auxChar, sizeof(char), 1, fileSystem.arquivo);
+}
 
 //retorna o indice do primeiro cluster vazio na tabela
-unsigned char findNextOpenCluster(FS fileSystem) {}
+unsigned char findNextOpenCluster(FS fileSystem) {
+    int i = 0;
+    while(i<TAM_INDICE){
+        if(fileSystem.indice[i] == '\xFF'){ // == VAZIO
+            return i;
+        }
+        i++;
+    }
+    return CORROMPIDO;
+}
 
 void OverWriteAt(FS fileSystem, char* text, unsigned char cIndex){//Função auxiliar OverWriteAt. Recebe o fileSystem, o texto que será inserido, e o índice da tabela atual. Recursiva.
   unsigned char nextClusterIndex;//Índice do próximo cluster.
@@ -206,10 +233,70 @@ void dir(FS fileSystem) {}
 void rm(char* path, FS fileSystem) {}
 
 //Leo
-void mkdir(char* name, FS fileSystem) {}
+
+void separatePaths(char* fullPath, char* path, char* itemName){
+    int i, j, lastBarIndex;
+    i = j = lastBarIndex = 0;
+    while (fullPath[i] != '\0'){
+            if(fullPath[i]=='/'){
+                lastBarIndex = i;
+            }
+            i++;   
+        }
+        i=0;
+        while(i<lastBarIndex){
+            path[i]=fullPath[i];
+            i++;
+        }
+        i++;
+        while(fullPath[i]!= '\0'){
+            itemName[j] = fullPath[i];
+            i++;
+            j++;
+        }
+}
+
+void mkdir(char* name, FS fileSystem) {
+    char dirName[200] = "";
+    unsigned char clusterIndex = findNextOpenCluster(fileSystem);
+    fileSystem.indice[clusterIndex] = END_OF_FILE;
+    if (name[0] == '/'){
+        char fullPath[200] = "";
+        char path[200] = "";
+        strcpy(fullPath, name);
+        separatePaths(fullPath, path,dirName);
+        int clusterOfDirIndex = getDirIndex(path, fileSystem);
+        appendItem(fileSystem, clusterOfDirIndex, clusterIndex);
+    }else{
+        strcpy(dirName,name);
+        appendItem(fileSystem, fileSystem.dirState.workingDirIndex ,clusterIndex);
+    }
+    strcpy(fileSystem.clusters[clusterIndex].nome, dirName);
+    strcpy(fileSystem.clusters[clusterIndex].tipo, "dir");
+    saveFS(fileSystem);
+}
 
 //Leo
-void mkfile(char* name, FS fileSystem) {}
+void make(char* name, char* type, FS fileSystem) {
+    char itemName[200] = "";
+    unsigned char clusterIndex = findNextOpenCluster(fileSystem);
+    fileSystem.indice[clusterIndex] = END_OF_FILE;
+    if (name[0] == '/'){
+        char fullPath[200] = "";
+        char path[200] = "";
+        strcpy(fullPath, name);
+        separatePaths(fullPath, path,itemName);
+        int clusterOfDirIndex = getDirIndex(path, fileSystem);
+        appendItem(fileSystem, clusterOfDirIndex, clusterIndex);
+        
+    }else{
+        strcpy(itemName, name);
+        appendItem(fileSystem, fileSystem.dirState.workingDirIndex ,clusterIndex);
+    }
+    strcpy(fileSystem.clusters[clusterIndex].nome, itemName);
+    strcpy(fileSystem.clusters[clusterIndex].tipo, type);
+    saveFS(fileSystem);
+}
 
 //Tiago
 void edit(char* path, char* text, FS fileSystem) {//Função edit. Executa o comando EDIT. Recebe o caminho do arquivo, o texto para inserir, fileSystem.

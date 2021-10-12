@@ -54,10 +54,16 @@ void rm(char* path, FS fileSystem);
 
 void mkdir(char* name, FS fileSystem);
 
-void mkfile(char* name, FS fileSystem);
+void make(char* name, char* type, FS fileSystem);
 
 void edit(char* path, char* text, FS fileSystem);
 
 void move(char* srcPath, char* destPath, FS fileSystem);
 
 void renameFile(char* path, char* name, FS fileSystem);
+
+unsigned char findNextOpenCluster(FS fileSystem);
+
+void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex);
+
+void saveFS(FS fileSystem);

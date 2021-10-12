@@ -183,10 +183,6 @@ void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned cha
 
     if (lowerArchive[strlen(lowerArchive) - 4] == '.') lowerArchive[strlen(lowerArchive) - 4] = '\0';
     if (upperPath[0] != '\0' && lowerArchive[0] != '\0') *lowerArchiveIndex = isInDir(*upperArchiveIndex,lowerArchive,fileSystem);
-    /*
-    free(breakPoint);
-    free(upperPath);
-    free(lowerArchive);*/
 }
 
 /*
@@ -260,12 +256,3 @@ void move(char* path, char* destPath, FS fileSystem) {}
 
 //Tiago
 void renameFile(char* path, char* name, FS fileSystem) {}
-
-int main(){
-    FS fileSystem = initFS();
-    char path[200];
-    while (1) {
-        scanf("%s", path);
-        rm(path, &fileSystem);
-    }
-}

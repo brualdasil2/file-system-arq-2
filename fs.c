@@ -101,7 +101,6 @@ void saveFS(FS fileSystem) {
 }
 
 
-
 void setPointerToCluster(FS fileSystem, unsigned char indice); //delcaração pra poder usar
 
 //Retorna o índice do diretorio a partir do caminho, e VAZIO caso o caminho seja inválido

@@ -147,45 +147,38 @@ void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) 
 //retorna o indice do primeiro cluster vazio na tabela
 unsigned char findNextOpenCluster(FS fileSystem) {}
 
-void writeAt(FS fileSystem, char* text, unsigned char cIndex){
-  unsigned char nextClusterIndex;
-  char* temp;
-  char* extra;
-  int extraSize;
-  int i;
+void OverWriteAt(FS fileSystem, char* text, unsigned char cIndex){//Função auxiliar OverWriteAt. Recebe o fileSystem, o texto que será inserido, e o índice da tabela atual. Recursiva.
+  unsigned char nextClusterIndex;//Índice do próximo cluster.
+  char* temp;//String temporária.
+  char* extra;//String extra.
+  int i;//Variável para laços.
 
-  setPointerToCluster(fileSystem,cIndex);
-  temp = (char*)malloc(MAX_CHAR*sizeof(char));
+  setPointerToCluster(fileSystem,cIndex);//Aponta o sistema de escrita para o cluster do índice.
+  temp = (char*)malloc(MAX_CHAR*sizeof(char));//Define a string temporária.
 
-  //puts("eae");
 
-  if(strlen(text) < MAX_CHAR){
-      fwrite(text, strlen(text)+1, 1, fileSystem.arquivo);
-  }else{
-      for(i=0;i<MAX_CHAR;i++){
+  if(strlen(text) < MAX_CHAR){//Caso o texto seja menor que a maior quantidade de caracteres do cluster,
+      fwrite(text, strlen(text)+1, 1, fileSystem.arquivo);//Escreve o texto no cluster.
+  }else{//Se não, executa:
+      for(i=0;i<MAX_CHAR;i++){//Salva a parte que será salva no cluster atual em temp.
           *(temp+i) = *(text+i);
       }
-      *(temp+MAX_CHAR) = '\0';
+      *(temp+MAX_CHAR) = '\0';//Termina a escrita da string.
 
-      puts("eae");
+      extra = (char*)malloc(sizeof(text)*sizeof(char));//Define a string extra.
 
-      extraSize = (sizeof(text));
-      extra = (char*)malloc(extraSize*sizeof(char));
-
-      for(i=MAX_CHAR;i<strlen(text)+1;i++){
+      for(i=MAX_CHAR;i<strlen(text)+1;i++){//Salva o que restou da string em extra.
           *(extra+i-MAX_CHAR) = *(text+i);
       }
 
-      printf("\nSobra:%s",extra);
-
-      fwrite(temp, sizeof(temp), 1, fileSystem.arquivo);
+      fwrite(temp, sizeof(temp), 1, fileSystem.arquivo);//Escreve o texto no cluster atual.
 
       //nextClusterIndex = findNextOpenCluster(fileSystem);
       nextClusterIndex = 1;
-      fileSystem.indice[cIndex] = nextClusterIndex;
-      fileSystem.indice[nextClusterIndex] = END_OF_FILE;
-      writeAt(fileSystem,extra,nextClusterIndex);
-  }  
+      fileSystem.indice[cIndex] = nextClusterIndex;//Redefine a tabela atual do cluster para o próximo cluster.
+      fileSystem.indice[nextClusterIndex] = END_OF_FILE;//Define o próximo como END_OF_FILE.
+      OverWriteAt(fileSystem,extra,nextClusterIndex);//Recursivamente, escreve no próximo cluster.
+  }
 }
 
 
@@ -219,16 +212,16 @@ void mkdir(char* name, FS fileSystem) {}
 void mkfile(char* name, FS fileSystem) {}
 
 //Tiago
-void edit(char* path, char* text, FS fileSystem) {
-    unsigned char cIndex;
+void edit(char* path, char* text, FS fileSystem) {//Função edit. Executa o comando EDIT. Recebe o caminho do arquivo, o texto para inserir, fileSystem.
+    unsigned char cIndex;//Comentário linha 240.
 
-    cIndex = getDirIndex(path,fileSystem);
+    cIndex = getDirIndex(path,fileSystem);//Define o índice do caminho entregue.
 
-    if(cIndex == VAZIO){
+    if(cIndex == VAZIO){//Caso o diretório não exista, executa:
         printf("Esse diretorio nao existe\n");
-    }else{
-        writeAt(fileSystem,text,cIndex);
-        saveFS(fileSystem);
+    }else{//Se não, caso normal:
+        OverWriteAt(fileSystem,text,cIndex);//Executa função auxiliar de escrita.
+        saveFS(fileSystem);//Salva o arquivo.
     }
 }
 
@@ -236,15 +229,19 @@ void edit(char* path, char* text, FS fileSystem) {
 void move(char* srcPath, char* destPath, FS fileSystem) {}
 
 //Tiago
-void renameFile(char* path, char* name, FS fileSystem) {
-    unsigned char cIndex;
+void renameFile(char* path, char* name, FS fileSystem) {//Função renameFile. Executa o comando RENAME. Recebe o caminho do arquivo, o nome novo e o fileSystem.
+    unsigned char cIndex;//Índice atual. Do inglês, current index.
 
-    cIndex = getDirIndex(path,fileSystem);
+    cIndex = getDirIndex(path,fileSystem);//Define o índice do caminho entregue.
 
-    if(cIndex == VAZIO){
-        printf("Esse diretorio nao existe\n");
-    }else{
-        strcpy(fileSystem.clusters[cIndex].nome,name);
-        saveFS(fileSystem);
+    if(cIndex == VAZIO){//Caso o diretório não exista, executa:
+        printf("Esse diretorio nao existe\n");//Prompt de erro em caso de diretório incorreto.
+    }else{//Se não, caso normal:
+        if(!(strcmp(name,'\0')==0)){
+            strcpy(fileSystem.clusters[cIndex].nome,name);//Executa a troca de nome.
+            saveFS(fileSystem);//Salva o arquivo.
+        }else{
+            printf("Nome inválido para renomear. Detalhe: nome vazio.\n");//Prompt de erro em caso de diretório incorreto.
+        }
     }
 }

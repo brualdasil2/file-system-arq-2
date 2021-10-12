@@ -101,10 +101,6 @@ void saveFS(FS fileSystem) {
 }
 
 
-<<<<<<< HEAD
-=======
-
->>>>>>> mkdir/file
 void setPointerToCluster(FS fileSystem, unsigned char indice); //delcaração pra poder usar
 
 //Retorna o índice do diretorio a partir do caminho, e VAZIO caso o caminho seja inválido
@@ -200,8 +196,7 @@ void OverWriteAt(FS fileSystem, char* text, unsigned char cIndex){//Função aux
 
       fwrite(temp, sizeof(temp), 1, fileSystem.arquivo);//Escreve o texto no cluster atual.
 
-      //nextClusterIndex = findNextOpenCluster(fileSystem);
-      nextClusterIndex = 1;
+      nextClusterIndex = findNextOpenCluster(fileSystem);//Busca o índice do próximo cluster.
       fileSystem.indice[cIndex] = nextClusterIndex;//Redefine a tabela atual do cluster para o próximo cluster.
       fileSystem.indice[nextClusterIndex] = END_OF_FILE;//Define o próximo como END_OF_FILE.
       OverWriteAt(fileSystem,extra,nextClusterIndex);//Recursivamente, escreve no próximo cluster.
@@ -241,7 +236,7 @@ void separatePaths(char* fullPath, char* path, char* itemName){
             if(fullPath[i]=='/'){
                 lastBarIndex = i;
             }
-            i++;   
+            i++;
         }
         i=0;
         while(i<lastBarIndex){
@@ -288,7 +283,6 @@ void make(char* name, char* type, FS fileSystem) {
         separatePaths(fullPath, path,itemName);
         int clusterOfDirIndex = getDirIndex(path, fileSystem);
         appendItem(fileSystem, clusterOfDirIndex, clusterIndex);
-        
     }else{
         strcpy(itemName, name);
         appendItem(fileSystem, fileSystem.dirState.workingDirIndex ,clusterIndex);
@@ -324,7 +318,7 @@ void renameFile(char* path, char* name, FS fileSystem) {//Função renameFile. E
     if(cIndex == VAZIO){//Caso o diretório não exista, executa:
         printf("Esse diretorio nao existe\n");//Prompt de erro em caso de diretório incorreto.
     }else{//Se não, caso normal:
-        if(!(strcmp(name,'\0')==0)){
+        if(!(strcmp(name,"\0")==0)){
             strcpy(fileSystem.clusters[cIndex].nome,name);//Executa a troca de nome.
             saveFS(fileSystem);//Salva o arquivo.
         }else{

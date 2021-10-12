@@ -147,6 +147,47 @@ void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) 
 //retorna o indice do primeiro cluster vazio na tabela
 unsigned char findNextOpenCluster(FS fileSystem) {}
 
+void writeAt(FS fileSystem, char* text, unsigned char cIndex){
+  unsigned char nextClusterIndex;
+  char* temp;
+  char* extra;
+  int extraSize;
+  int i;
+
+  setPointerToCluster(fileSystem,cIndex);
+  temp = (char*)malloc(MAX_CHAR*sizeof(char));
+
+  //puts("eae");
+
+  if(strlen(text) < MAX_CHAR){
+      fwrite(text, strlen(text)+1, 1, fileSystem.arquivo);
+  }else{
+      for(i=0;i<MAX_CHAR;i++){
+          *(temp+i) = *(text+i);
+      }
+      *(temp+MAX_CHAR) = '\0';
+
+      puts("eae");
+
+      extraSize = (sizeof(text));
+      extra = (char*)malloc(extraSize*sizeof(char));
+
+      for(i=MAX_CHAR;i<strlen(text)+1;i++){
+          *(extra+i-MAX_CHAR) = *(text+i);
+      }
+
+      printf("\nSobra:%s",extra);
+
+      fwrite(temp, sizeof(temp), 1, fileSystem.arquivo);
+
+      //nextClusterIndex = findNextOpenCluster(fileSystem);
+      nextClusterIndex = 1;
+      fileSystem.indice[cIndex] = nextClusterIndex;
+      fileSystem.indice[nextClusterIndex] = END_OF_FILE;
+      writeAt(fileSystem,extra,nextClusterIndex);
+  }  
+}
+
 
 /*
 ==== FUNÇÕES DE COMANDOS ====
@@ -179,20 +220,16 @@ void mkfile(char* name, FS fileSystem) {}
 
 //Tiago
 void edit(char* path, char* text, FS fileSystem) {
-    /*
-    IDEIA/sugestao:
+    unsigned char cIndex;
 
-    if (sizeof(text) < TAM_CLUSTER - sizeof(CLUSTER)) {
-        escreve normalmente
-    }
-    else {
-        separa em duas strings: string A com o max de chars que cabem no cluster, e string B com o resto
-        escreve string A aqui
-        acha o prox cluster
-        chama essa funcao recursivamente pro prox cluster
-    }
+    cIndex = getDirIndex(path,fileSystem);
 
-*/
+    if(cIndex == VAZIO){
+        printf("Esse diretorio nao existe\n");
+    }else{
+        writeAt(fileSystem,text,cIndex);
+        saveFS(fileSystem);
+    }
 }
 
 //Arthur
@@ -200,12 +237,14 @@ void move(char* srcPath, char* destPath, FS fileSystem) {}
 
 //Tiago
 void renameFile(char* path, char* name, FS fileSystem) {
-  unsigned char cIndex;
+    unsigned char cIndex;
 
-  //cIndex = getDirIndex(path,fileSystem);
-  cIndex = 0;
+    cIndex = getDirIndex(path,fileSystem);
 
-  strcpy(fileSystem.clusters[cIndex].nome,name);
-  //saveFS(fileSystem);
-  //fileSystem.clusters[cIndex].tipo = fileSystem.clusters[cIndex].tipo;
+    if(cIndex == VAZIO){
+        printf("Esse diretorio nao existe\n");
+    }else{
+        strcpy(fileSystem.clusters[cIndex].nome,name);
+        saveFS(fileSystem);
+    }
 }

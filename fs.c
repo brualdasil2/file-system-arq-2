@@ -109,4 +109,13 @@ void edit(char* path, char* text, FS fileSystem) {}
 void move(char* srcPath, char* destPath, FS fileSystem) {}
 
 //Tiago
-void renameFile(char* path, char* name, FS fileSystem) {}
+void renameFile(char* path, char* name, FS fileSystem) {
+  unsigned char cIndex;
+
+  //cIndex = getDirIndex(path,fileSystem);
+  cIndex = 0;
+
+  strcpy(fileSystem.clusters[cIndex].nome,name);
+  //saveFS(fileSystem);
+  //fileSystem.clusters[cIndex].tipo = fileSystem.clusters[cIndex].tipo;
+}

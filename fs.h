@@ -11,6 +11,10 @@
 #define I_INDICE 8
 #define I_ROOT 264
 
+#define NOME_ARQUIVO "data.bin"
+
+
+
 typedef struct {
     char workingDir[221];
     unsigned char workingDirIndex;
@@ -42,7 +46,7 @@ FS initFS();
 
 unsigned char getDirIndex(char* path, FS fileSystem);
 
-void cd(char* path, FS fileSystem);
+void cd(char* path, FS* fileSystem);
 
 void dir(FS fileSystem);
 

@@ -89,10 +89,18 @@ FS initFS() {
 */
 
 void setPointerToCluster(FS fileSystem, unsigned char indice); //declaração pra poder usar
-int dirIsEmpty(unsigned char dirIndex, FS fileSystem);
-unsigned char isInDir(unsigned char dirIndex, char* archiveName, FS fileSystem);
-void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned char* lowerArchiveIndex, FS fileSystem);
 
+//escreve todos os dados do FS no arquivo de memória
+void saveFS(FS fileSystem) {
+    int i;
+    fseek(fileSystem.arquivo, 0, SEEK_SET); //vai pro inicio do arquivo
+    fwrite(&(fileSystem.meta), sizeof(fileSystem.meta), 1, fileSystem.arquivo);
+    fwrite(fileSystem.indice, TAM_INDICE, 1, fileSystem.arquivo);
+    for (i = 0; i < TAM_INDICE; i++) {
+        fwrite(&(fileSystem.clusters[i]), sizeof(CLUSTER), 1, fileSystem.arquivo); //escreve meta do cluster
+        fseek(fileSystem.arquivo, TAM_CLUSTER - sizeof(CLUSTER), SEEK_CUR); //pula pro próximo
+    }
+}
 //Retorna o índice do diretorio a partir do caminho, e VAZIO caso o caminho seja inválido
 unsigned char getDirIndex(char* path, FS fileSystem) {
     char copiedPath[200]; //cópia da string (declarada localmente) pra funcionar no strtok
@@ -139,7 +147,7 @@ unsigned char findNextOpenCluster(FS fileSystem) {}
 
 //Testa se o diretório está vazio.
 int dirIsEmpty(unsigned char dirIndex, FS fileSystem) {
-    unsigned char c = VAZIO;
+    unsigned char c;
     setPointerToCluster(fileSystem, dirIndex);
     while(1) {
         fread(&c, sizeof(unsigned char), 1, fileSystem.arquivo);
@@ -164,6 +172,7 @@ void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned cha
     char* lowerArchive;
 
     strcpy(upperPath,path);
+    printf("%s\n", upperPath);
 
     breakPoint = strrchr(upperPath, '/');
     breakPoint[0] = '\0';
@@ -171,10 +180,13 @@ void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned cha
 
     *upperArchiveIndex = getDirIndex(upperPath, fileSystem);
     *lowerArchiveIndex = (unsigned char)VAZIO;
-    if (lowerArchive[strlen(lowerArchive) - 4] == '.') {
-       lowerArchive[strlen(lowerArchive) - 4] = '\0';
-    }
+
+    if (lowerArchive[strlen(lowerArchive) - 4] == '.') lowerArchive[strlen(lowerArchive) - 4] = '\0';
     if (upperPath[0] != '\0' && lowerArchive[0] != '\0') *lowerArchiveIndex = isInDir(*upperArchiveIndex,lowerArchive,fileSystem);
+    /*
+    free(breakPoint);
+    free(upperPath);
+    free(lowerArchive);*/
 }
 
 /*
@@ -200,9 +212,15 @@ void dir(FS fileSystem) {}
 //Arthur
 void rm(char* path, FS* fileSystem) {
     unsigned char upper,lower;
+    upper = lower = VAZIO;
 
     getLastTwoIndex(path, &upper, &lower, *fileSystem);
-    if((upper != VAZIO && lower != VAZIO) && (fileSystem->clusters[lower].tipo != "dir" || dirIsEmpty(lower, *fileSystem))){
+    printf("upper: %x lower: %x\n", upper, lower);
+    if(dirIsEmpty(lower, *fileSystem)) printf("empty\n");
+    else printf("not empty\n");
+    if((upper != VAZIO && lower != VAZIO) && (!(strcmp("dir",fileSystem->clusters[lower].tipo) == 0) || dirIsEmpty(lower, *fileSystem))){
+        printf("lowerNome: %s\n", fileSystem->clusters[lower].nome);
+        printf("lowerTipo: %s\n", fileSystem->clusters[lower].tipo);
         isInDir(upper, fileSystem->clusters[lower].nome, *fileSystem);
         fseek(fileSystem->arquivo, (long int)(-1*sizeof(char)), SEEK_CUR);
         putc(VAZIO,fileSystem->arquivo);
@@ -243,8 +261,11 @@ void move(char* path, char* destPath, FS fileSystem) {}
 //Tiago
 void renameFile(char* path, char* name, FS fileSystem) {}
 
-int main() {
+int main(){
     FS fileSystem = initFS();
-    
-    return 0;
+    char path[200];
+    while (1) {
+        scanf("%s", path);
+        rm(path, &fileSystem);
+    }
 }

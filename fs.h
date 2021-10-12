@@ -52,8 +52,6 @@ void dir(FS fileSystem);
 
 void rm(char* path, FS fileSystem);
 
-void mkdir(char* name, FS fileSystem);
-
 void make(char* name, char* type, FS fileSystem);
 
 void edit(char* path, char* text, FS fileSystem);

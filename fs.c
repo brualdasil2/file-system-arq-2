@@ -219,26 +219,6 @@ void separatePaths(char* fullPath, char* path, char* itemName){
         }
 }
 
-void mkdir(char* name, FS fileSystem) {
-    char dirName[200] = "";
-    unsigned char clusterIndex = findNextOpenCluster(fileSystem);
-    fileSystem.indice[clusterIndex] = END_OF_FILE;
-    if (name[0] == '/'){
-        char fullPath[200] = "";
-        char path[200] = "";
-        strcpy(fullPath, name);
-        separatePaths(fullPath, path,dirName);
-        int clusterOfDirIndex = getDirIndex(path, fileSystem);
-        appendItem(fileSystem, clusterOfDirIndex, clusterIndex);
-    }else{
-        strcpy(dirName,name);
-        appendItem(fileSystem, fileSystem.dirState.workingDirIndex ,clusterIndex);
-    }
-    strcpy(fileSystem.clusters[clusterIndex].nome, dirName);
-    strcpy(fileSystem.clusters[clusterIndex].tipo, "dir");
-    saveFS(fileSystem);
-}
-
 //Leo
 void make(char* name, char* type, FS fileSystem) {
     char itemName[200] = "";

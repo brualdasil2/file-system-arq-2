@@ -10,7 +10,7 @@
 #define TAM_INDICE 256
 #define I_INDICE 8
 #define I_ROOT 264
-#define MAX_CHAR 3//TAM_CLUSTER - sizeof(CLUSTER) - 1
+#define MAX_CHAR TAM_CLUSTER - sizeof(CLUSTER) - 1
 
 #define NOME_ARQUIVO "data.bin"
 

@@ -179,6 +179,7 @@ void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned cha
         breakPoint[0] = '\0';
         lowerArchiveName = breakPoint + 1;
     }
+
     if (upperPath[0] != '\0') *upperArchiveIndex = getDirIndex(upperPath, fileSystem); //getDirIndex da crash se receber '\0'
     *lowerArchiveIndex = (unsigned char)VAZIO;
 
@@ -220,8 +221,11 @@ void rm(char* path, FS* fileSystem) {
         isInDir(upper, fileSystem->clusters[lower].nome, fileSystem->clusters[lower].tipo, *fileSystem);
         fseek(fileSystem->arquivo, (long int)(-1*sizeof(char)), SEEK_CUR);
         putc(VAZIO,fileSystem->arquivo);
-
-        fileSystem->indice[lower] = VAZIO;
+        do {
+            upper = fileSystem->indice[lower]; //Reaproveita upper para guardar o apontador localizado na posição lower da tabela de índices.
+            fileSystem->indice[lower] = VAZIO;
+            lower = upper;
+        } while (lower != END_OF_FILE); //Certifica-se de excluir todos os clusters referentes ao arquivo.
         saveFS(*fileSystem);
     }
     else printf("Caminho Invalido.\n");

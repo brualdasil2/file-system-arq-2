@@ -140,7 +140,21 @@ void setPointerToCluster(FS fileSystem, unsigned char indice) {
 }
 
 //Leo: troca FE por itemIndex, e escreve FE logo dps
-void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) {}
+void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) {
+    char item = CORROMPIDO;
+    char auxChar;
+    setPointerToCluster(fileSystem, dirIndex); // coloca o pointer no cluster
+    // acha o fim do diretorio
+    while(item != '\xFE'){
+        fread(&item, sizeof(char), 1, fileSystem.arquivo);
+    }
+    //coloca mais um indice(dirIndex) e poe o FE
+    fseek(fileSystem.arquivo, (long int)(-1*sizeof(char)), SEEK_CUR);
+    auxChar = itemIndex;
+    fwrite(&auxChar, sizeof(char), 1, fileSystem.arquivo);
+    auxChar = END_OF_FILE;
+    fwrite(&auxChar, sizeof(char), 1, fileSystem.arquivo);
+}
 
 //retorna o indice do primeiro cluster vazio na tabela
 unsigned char findNextOpenCluster(FS fileSystem) {}
@@ -255,8 +269,34 @@ void edit(char* path, char* text, FS fileSystem) {
 */
 }
 
-//Arthur
-void move(char* path, char* destPath, FS fileSystem) {}
+//Arthur: Move um arquivo para uma pasta designada
+void move(char* path, FS fileSystem) {
+    unsigned char originUpper, originLower, destIndex;
+    char* breakPoint;
+    char* destPath;
+    char originPath[strlen(path)];
+
+   originUpper = originLower = destIndex = VAZIO;
+
+    strcpy(originPath,path);
+    breakPoint = strrchr(originPath, ' ');
+    if (breakPoint != NULL) {
+        breakPoint[0] = '\0';
+        destPath = breakPoint + 1;
+
+        if (destPath[0] != '\0')
+            destIndex = getDirIndex(destPath, fileSystem);
+    }
+    getLastTwoIndex(originPath, &originUpper, &originLower, fileSystem);
+    if(originUpper != VAZIO && originLower != VAZIO && destIndex != VAZIO){
+        isInDir(originUpper, fileSystem.clusters[originLower].nome, fileSystem.clusters[originLower].tipo, fileSystem);
+        fseek(fileSystem.arquivo, (long int)(-1*sizeof(char)), SEEK_CUR);
+        putc(VAZIO,fileSystem.arquivo);
+        
+        appendItem(fileSystem, destIndex, originLower);
+    }
+    else printf("Caminhos Invalidos.\n");
+}
 
 //Tiago
 void renameFile(char* path, char* name, FS fileSystem) {}

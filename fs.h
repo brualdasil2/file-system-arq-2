@@ -58,6 +58,6 @@ void mkfile(char* name, FS fileSystem);
 
 void edit(char* path, char* text, FS fileSystem);
 
-void move(char* srcPath, FS fileSystem);
+void move(char* srcPath, char* destPath, FS* fileSystem);
 
 void renameFile(char* path, char* name, FS fileSystem);

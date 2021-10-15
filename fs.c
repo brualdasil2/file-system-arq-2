@@ -235,6 +235,11 @@ void rm(char* path, FS* fileSystem) {
         isInDir(upper, fileSystem->clusters[lower].nome, fileSystem->clusters[lower].tipo, *fileSystem);
         fseek(fileSystem->arquivo, (long int)(-1*sizeof(char)), SEEK_CUR);
         putc(VAZIO,fileSystem->arquivo);
+
+        if(fileSystem->dirState.workingDirIndex == lower)  {
+            fileSystem->dirState.workingDirIndex = 0;
+            strcpy(fileSystem->dirState.workingDir, "root");
+        }
         do {
             upper = fileSystem->indice[lower]; //Reaproveita upper para guardar o apontador localizado na posição lower da tabela de índices.
             fileSystem->indice[lower] = VAZIO;
@@ -270,30 +275,23 @@ void edit(char* path, char* text, FS fileSystem) {
 }
 
 //Arthur: Move um arquivo para uma pasta designada
-void move(char* path, FS fileSystem) {
+void move(char* srcPath, char* destPath, FS* fileSystem) {
     unsigned char originUpper, originLower, destIndex;
-    char* breakPoint;
-    char* destPath;
-    char originPath[strlen(path)];
+    
+    originUpper = originLower = destIndex = VAZIO;
 
-   originUpper = originLower = destIndex = VAZIO;
-
-    strcpy(originPath,path);
-    breakPoint = strrchr(originPath, ' ');
-    if (breakPoint != NULL) {
-        breakPoint[0] = '\0';
-        destPath = breakPoint + 1;
-
-        if (destPath[0] != '\0')
-            destIndex = getDirIndex(destPath, fileSystem);
-    }
-    getLastTwoIndex(originPath, &originUpper, &originLower, fileSystem);
+    if (destPath[0] != '\0') destIndex = getDirIndex(destPath, *fileSystem);//getDirIndex da crash se receber '\0'
+    getLastTwoIndex(srcPath, &originUpper, &originLower, *fileSystem);
     if(originUpper != VAZIO && originLower != VAZIO && destIndex != VAZIO){
-        isInDir(originUpper, fileSystem.clusters[originLower].nome, fileSystem.clusters[originLower].tipo, fileSystem);
-        fseek(fileSystem.arquivo, (long int)(-1*sizeof(char)), SEEK_CUR);
-        putc(VAZIO,fileSystem.arquivo);
-        
-        appendItem(fileSystem, destIndex, originLower);
+        isInDir(originUpper, fileSystem->clusters[originLower].nome, fileSystem->clusters[originLower].tipo, *fileSystem);
+        fseek(fileSystem->arquivo, (long int)(-1*sizeof(char)), SEEK_CUR);
+        putc(VAZIO,fileSystem->arquivo);
+        appendItem(*fileSystem, destIndex, originLower);
+
+        if(fileSystem->dirState.workingDirIndex == originLower)  {
+            fileSystem->dirState.workingDirIndex = 0;
+            strcpy(fileSystem->dirState.workingDir, "root");
+        }
     }
     else printf("Caminhos Invalidos.\n");
 }

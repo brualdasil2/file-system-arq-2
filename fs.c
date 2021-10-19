@@ -165,8 +165,32 @@ void cd(char* path, FS* fileSystem) {
     }
 }
 
-//Bruno
-void dir(FS fileSystem) {}
+//Lista os arquivos e diretórios do diretório atual
+void dir(FS fileSystem) {
+    setPointerToCluster(fileSystem, fileSystem.dirState.workingDirIndex); //vai pro dir atual
+    unsigned char c;
+    int fileCounter = 0;
+    do { //lê cada índice do dir
+        fread(&c, sizeof(unsigned char), 1, fileSystem.arquivo);
+        if (c != END_OF_FILE && c != VAZIO && c != CORROMPIDO) { //se for um indice válido
+            if ((unsigned char)fileSystem.indice[c] != VAZIO) { //consulta a tabela de indices pra ver se o arquivo ainda existe mesmo
+                //printa o nome do arquivo ou diretorio com formatação
+                if (!strcmp(fileSystem.clusters[c].tipo, "dir")) {
+                    printf("<DIR>");
+                }
+                printf("\t%s", fileSystem.clusters[c].nome);
+                if (strcmp(fileSystem.clusters[c].tipo, "dir")) {
+                    printf(".%s", fileSystem.clusters[c].tipo);
+                }
+                printf("\n");
+                fileCounter++;
+            }
+        }
+    } while (c != END_OF_FILE);
+    if (fileCounter == 0) { //se não tinha nenhum arquivo
+        printf("\t<VAZIO>\n");
+    }
+}
 
 //Arthur
 void rm(char* path, FS fileSystem) {}

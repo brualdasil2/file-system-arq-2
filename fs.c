@@ -106,15 +106,15 @@ void setPointerToCluster(FS fileSystem, unsigned char indice); //delcaração pr
 //Retorna o índice do diretorio a partir do caminho, e VAZIO caso o caminho seja inválido
 unsigned char getDirIndex(char* path, FS fileSystem) {
     char copiedPath[200]; //cópia da string (declarada localmente) pra funcionar no strtok
-    strcpy(copiedPath, path);
+    strcpy(copiedPath, path);  
     char *dirName = strtok(copiedPath, "/"); //armazena nome do diretório a ser encontrado
     if (strcmp(dirName, "root")) { //testa se o primeiro dir é o root
         return VAZIO;
-    }
+    }     
     dirName = strtok(NULL, "/"); //pega o nome do primeiro subdiretório
-    unsigned char currDir = 0x00, c;
+    unsigned char currDir = 0x00, c;    
     int foundDir;
-    while (dirName) { //percorre cada subdiretório do caminho
+    while (dirName) { //percorre cada subdiretório do caminho         
         setPointerToCluster(fileSystem, currDir);
         foundDir = 0;
         while(!foundDir) { //percorre cada byte da área de dados do diretório atual
@@ -132,6 +132,39 @@ unsigned char getDirIndex(char* path, FS fileSystem) {
             }
         }
         dirName = strtok(NULL, "/"); //só chega aqui se encontrou o dir buscado, salva dir seguinte a buscar
+    }
+    return currDir;
+}
+
+//Retorna o índice do arquivo texto a partir do caminho, e VAZIO caso o caminho seja inválido
+unsigned char getTXTIndex(char* path, FS fileSystem) {
+    char copiedPath[200]; //cópia da string (declarada localmente) pra funcionar no strtok
+    strcpy(copiedPath, path);      
+    char *dirName = strtok(copiedPath, "/"); //armazena nome do diretório a ser encontrado
+    if (strcmp(dirName, "root")) { //testa se o primeiro dir é o root
+        return VAZIO;
+    }     
+    dirName = strtok(NULL, "/"); //pega o nome do primeiro subdiretório
+    unsigned char currDir = 0x00, c;    
+    int foundDir;       
+    while (dirName) { //percorre cada subdiretório do caminho         
+        setPointerToCluster(fileSystem, currDir);
+        foundDir = 0;        
+        while(!foundDir) { //percorre cada byte da área de dados do diretório atual
+            fread(&c, sizeof(unsigned char), 1, fileSystem.arquivo);
+            if (c != END_OF_FILE) {                
+                if (!strcmp(dirName, fileSystem.clusters[c].nome)) { //verifica se é o nome do dir buscado, e se é do tipo txt
+                    if (!strcmp("txt", fileSystem.clusters[c].tipo)) {
+                        currDir = c;
+                        foundDir = 1;                        
+                    }
+                }
+            }
+            else {
+                return VAZIO; //se chegou ao fim e não encontrou, o caminho passado é inválido
+            }
+        }
+        dirName = strtok(NULL, "/"); //só chega aqui se encontrou o txt buscado, salva dir seguinte a buscar
     }
     return currDir;
 }
@@ -174,13 +207,13 @@ void OverWriteAt(FS fileSystem, char* text, unsigned char cIndex){//Função aux
   unsigned char nextClusterIndex;//Índice do próximo cluster.
   char* temp;//String temporária.
   char* extra;//String extra.
-  int i;//Variável para laços.
+  int i;//Variável para laços. 
 
   setPointerToCluster(fileSystem,cIndex);//Aponta o sistema de escrita para o cluster do índice.
   temp = (char*)malloc(MAX_CHAR*sizeof(char));//Define a string temporária.
 
 
-  if(strlen(text) < MAX_CHAR){//Caso o texto seja menor que a maior quantidade de caracteres do cluster,
+  if(strlen(text) < MAX_CHAR){//Caso o texto seja menor que a maior quantidade de caracteres do cluster,    
       fwrite(text, strlen(text)+1, 1, fileSystem.arquivo);//Escreve o texto no cluster.
   }else{//Se não, executa:
       for(i=0;i<MAX_CHAR;i++){//Salva a parte que será salva no cluster atual em temp.
@@ -296,13 +329,17 @@ void make(char* name, char* type, FS fileSystem) {
 void edit(char* path, char* text, FS fileSystem) {//Função edit. Executa o comando EDIT. Recebe o caminho do arquivo, o texto para inserir, fileSystem.
     unsigned char cIndex;//Comentário linha 240.
 
-    cIndex = getDirIndex(path,fileSystem);//Define o índice do caminho entregue.
+    cIndex = getTXTIndex(path,fileSystem);//Define o índice do caminho entregue.  
 
     if(cIndex == VAZIO){//Caso o diretório não exista, executa:
         printf("Esse diretorio nao existe\n");
     }else{//Se não, caso normal:
-        OverWriteAt(fileSystem,text,cIndex);//Executa função auxiliar de escrita.
-        saveFS(fileSystem);//Salva o arquivo.
+        if(strcmp(fileSystem.clusters[cIndex].tipo,"txt")==0){
+            OverWriteAt(fileSystem,text,cIndex);//Executa função auxiliar de escrita.
+            saveFS(fileSystem);//Salva o arquivo.
+        }else{
+            printf("Arquivo inválido para edição.\n");
+        }        
     }
 }
 

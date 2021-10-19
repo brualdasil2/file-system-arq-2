@@ -50,7 +50,7 @@ void cd(char* path, FS* fileSystem);
 
 void dir(FS fileSystem);
 
-void rm(char* path, FS fileSystem);
+void rm(char* path, FS* fileSystem);
 
 void mkdir(char* name, FS fileSystem);
 
@@ -58,6 +58,6 @@ void mkfile(char* name, FS fileSystem);
 
 void edit(char* path, char* text, FS fileSystem);
 
-void move(char* srcPath, char* destPath, FS fileSystem);
+void move(char* srcPath, char* destPath, FS* fileSystem);
 
 void renameFile(char* path, char* name, FS fileSystem);

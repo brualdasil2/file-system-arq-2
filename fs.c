@@ -185,6 +185,7 @@ void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned cha
     char* breakPoint;
     char* lowerArchiveName;
     char lowerArchiveType[4];
+    if(path == NULL) return;
     char upperPath[strlen(path)];
 
     strcpy(upperPath,path);
@@ -194,7 +195,9 @@ void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned cha
         lowerArchiveName = breakPoint + 1;
     }
 
-    if (upperPath[0] != '\0') *upperArchiveIndex = getDirIndex(upperPath, fileSystem); //getDirIndex da crash se receber '\0'
+    if (upperPath[0] != '\0') //getDirIndex da crash se receber '\0'
+        *upperArchiveIndex = getDirIndex(upperPath, fileSystem);
+
     *lowerArchiveIndex = (unsigned char)VAZIO;
 
     if (lowerArchiveName[strlen(lowerArchiveName) - 4] == '.') {
@@ -202,7 +205,8 @@ void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned cha
         lowerArchiveName[strlen(lowerArchiveName) - 4] = '\0';
     }
     else strcpy(lowerArchiveType, "dir");
-    if (breakPoint != NULL && upperPath[0] != '\0' && lowerArchiveName[0] != '\0') *lowerArchiveIndex = isInDir(*upperArchiveIndex,lowerArchiveName, lowerArchiveType, fileSystem);
+    if (breakPoint != NULL && upperPath[0] != '\0' && lowerArchiveName[0] != '\0')
+        *lowerArchiveIndex = isInDir(*upperArchiveIndex,lowerArchiveName, lowerArchiveType, fileSystem);
 }
 
 /*
@@ -276,22 +280,25 @@ void edit(char* path, char* text, FS fileSystem) {
 
 //Arthur: Move um arquivo para uma pasta designada
 void move(char* srcPath, char* destPath, FS* fileSystem) {
-    unsigned char originUpper, originLower, destIndex;
+    unsigned char originUpper, originLower, destLower;
+    originUpper = originLower = destLower = VAZIO;
     
-    originUpper = originLower = destIndex = VAZIO;
-
-    if (destPath[0] != '\0') destIndex = getDirIndex(destPath, *fileSystem);//getDirIndex da crash se receber '\0'
+    if (destPath != NULL && destPath[0] != '\0') destLower = getDirIndex(destPath, *fileSystem); //getDirIndex da crash se receber '\0'
     getLastTwoIndex(srcPath, &originUpper, &originLower, *fileSystem);
-    if(originUpper != VAZIO && originLower != VAZIO && destIndex != VAZIO){
-        isInDir(originUpper, fileSystem->clusters[originLower].nome, fileSystem->clusters[originLower].tipo, *fileSystem);
-        fseek(fileSystem->arquivo, (long int)(-1*sizeof(char)), SEEK_CUR);
-        putc(VAZIO,fileSystem->arquivo);
-        appendItem(*fileSystem, destIndex, originLower);
 
-        if(fileSystem->dirState.workingDirIndex == originLower)  {
-            fileSystem->dirState.workingDirIndex = 0;
-            strcpy(fileSystem->dirState.workingDir, "root");
+    if(originUpper != VAZIO && originLower != VAZIO && destLower != VAZIO && (originLower != destLower)){
+        if(isInDir(destLower, fileSystem->clusters[originLower].nome, fileSystem->clusters[originLower].tipo, *fileSystem) == VAZIO) {
+            isInDir(originUpper, fileSystem->clusters[originLower].nome, fileSystem->clusters[originLower].tipo, *fileSystem);
+            fseek(fileSystem->arquivo, (long int)(-1*sizeof(char)), SEEK_CUR);
+            putc(VAZIO,fileSystem->arquivo);
+            appendItem(*fileSystem, destLower, originLower);
+
+            if(fileSystem->dirState.workingDirIndex == originLower)  {
+                fileSystem->dirState.workingDirIndex = 0;
+                strcpy(fileSystem->dirState.workingDir, "root");
+            }
         }
+        else printf("O diretorio de destino ja contem um arquivo com o mesmo nome e tipo.\n");
     }
     else printf("Caminhos Invalidos.\n");
 }

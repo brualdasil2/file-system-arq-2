@@ -50,7 +50,7 @@ void cd(char* path, FS* fileSystem);
 
 void dir(FS fileSystem);
 
-void rm(char* path, FS fileSystem);
+void rm(char* path, FS* fileSystem);
 
 void make(char* name, char* type, FS fileSystem);
 

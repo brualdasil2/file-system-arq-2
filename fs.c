@@ -464,7 +464,6 @@ void move(char* srcPath, char* destPath, FS* fileSystem) {
 //Tiago
 void renameFile(char* path, char* name, FS fileSystem) {//Função renameFile. Executa o comando RENAME. Recebe o caminho do arquivo, o nome novo e o fileSystem.
     unsigned char cIndex;//Índice atual. Do inglês, current index.
-    unsigned char originUpper, originLower;
 
     cIndex = getDirIndex(path,fileSystem);//Define o índice do caminho entregue.
 
@@ -472,13 +471,8 @@ void renameFile(char* path, char* name, FS fileSystem) {//Função renameFile. E
         printf("Esse diretorio nao existe\n");//Prompt de erro em caso de diretório incorreto.
     }else{//Se não, caso normal:
         if(!(strcmp(name,"\0")==0)){
-            getLastTwoIndex(path, &originUpper, &originLower, fileSystem);
-            if(isInDir(originUpper, name, fileSystem->clusters[cIndex].tipo, fileSystem)==VAZIO){
-                strcpy(fileSystem.clusters[cIndex].nome,name);//Executa a troca de nome.
-                saveFS(fileSystem);//Salva o arquivo.
-            }else{
-                printf("Nome inválido para renomear. Detalhe: nome já utilizado.\n");//Prompt de erro em caso de diretório incorreto.
-            }            
+            strcpy(fileSystem.clusters[cIndex].nome,name);//Executa a troca de nome.
+            saveFS(fileSystem);//Salva o arquivo.
         }else{
             printf("Nome inválido para renomear. Detalhe: nome vazio.\n");//Prompt de erro em caso de diretório incorreto.
         }

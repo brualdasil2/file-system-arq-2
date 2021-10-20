@@ -385,15 +385,15 @@ void make(char* name, char* type, FS fileSystem) {
 
 //Tiago
 void edit(char* path, char* text, FS fileSystem) {//Função edit. Executa o comando EDIT. Recebe o caminho do arquivo, o texto para inserir, fileSystem.
-      unsigned char originUpper, originLower;
+    unsigned char originUpper, originLower;
 
-    getLastTwoIndex(path, &originUpper, &originLower, fileSystem);
+    getLastTwoIndex(path, &originUpper, &originLower, fileSystem);//Recupera o índice do arquivo e do diretório.
 
-    if(originUpper == VAZIO){//Caso o diretório não exista, executa:
+    if(originLower == VAZIO){//Caso o arquivo não exista, executa:
         printf("Esse diretorio nao existe\n");
     }else{//Se não, caso normal:
-        if(strcmp(fileSystem.clusters[originUpper].tipo,"txt")==0){
-            OverWriteAt(fileSystem,text,originUpper);//Executa função auxiliar de escrita.
+        if(strcmp(fileSystem.clusters[originLower].tipo,"txt")==0){
+            OverWriteAt(fileSystem,text,originLower);//Executa função auxiliar de escrita.
             saveFS(fileSystem);//Salva o arquivo.
         }else{
             printf("Arquivo inválido para edição.\n");
@@ -436,13 +436,13 @@ void renameFile(char* path, char* name, FS fileSystem) {//Função renameFile. E
         printf("Esse diretorio nao existe\n");//Prompt de erro em caso de diretório incorreto.
     }else{//Se não, caso normal:
         if(originLower == VAZIO){            
-            printf("Arquivo inválido.\n");//Prompt de erro em caso de diretório incorreto.           
-        }else{        
+            printf("Arquivo inválido.\n");//Prompt de erro em caso de arquivo inválido.           
+        }else{//Se não, caso normal:  
             if(isInDir(originUpper, name, fileSystem.clusters[originLower].tipo, fileSystem)==VAZIO){
                 strcpy(fileSystem.clusters[originLower].nome,name);//Executa a troca de nome.
                 saveFS(fileSystem);//Salva o arquivo.
             }else{
-                printf("Nome inválido para renomear. Detalhe: nome já utilizado.\n");//Prompt de erro em caso de diretório incorreto.
+                printf("Nome inválido para renomear. Detalhe: nome já utilizado.\n");//Prompt de erro em caso de nome inválido.
             } 
         }
     }

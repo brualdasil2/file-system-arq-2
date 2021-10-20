@@ -134,39 +134,6 @@ unsigned char getDirIndex(char* path, FS fileSystem) {
     return currDir;
 }
 
-//Retorna o índice do arquivo texto a partir do caminho, e VAZIO caso o caminho seja inválido
-unsigned char getTXTIndex(char* path, FS fileSystem) {
-    char copiedPath[200]; //cópia da string (declarada localmente) pra funcionar no strtok
-    strcpy(copiedPath, path);      
-    char *dirName = strtok(copiedPath, "/"); //armazena nome do diretório a ser encontrado
-    if (strcmp(dirName, "root")) { //testa se o primeiro dir é o root
-        return VAZIO;
-    }     
-    dirName = strtok(NULL, "/"); //pega o nome do primeiro subdiretório
-    unsigned char currDir = 0x00, c;    
-    int foundDir;       
-    while (dirName) { //percorre cada subdiretório do caminho         
-        setPointerToCluster(fileSystem, currDir);
-        foundDir = 0;        
-        while(!foundDir) { //percorre cada byte da área de dados do diretório atual
-            fread(&c, sizeof(unsigned char), 1, fileSystem.arquivo);
-            if (c != END_OF_FILE) {                
-                if (!strcmp(dirName, fileSystem.clusters[c].nome)) { //verifica se é o nome do dir buscado, e se é do tipo txt
-                    if (!strcmp("txt", fileSystem.clusters[c].tipo)) {
-                        currDir = c;
-                        foundDir = 1;                        
-                    }
-                }
-            }
-            else {
-                return VAZIO; //se chegou ao fim e não encontrou, o caminho passado é inválido
-            }
-        }
-        dirName = strtok(NULL, "/"); //só chega aqui se encontrou o txt buscado, salva dir seguinte a buscar
-    }
-    return currDir;
-}
-
 //Leo: posiciona o ponteiro do arquivo no início da área de dados do cluster
 void setPointerToCluster(FS fileSystem, unsigned char indice) {
     fseek(fileSystem.arquivo, sizeof(fileSystem.meta) + TAM_INDICE + indice*TAM_CLUSTER + sizeof(CLUSTER), SEEK_SET);
@@ -247,11 +214,12 @@ int dirIsEmpty(unsigned char dirIndex, FS fileSystem) {
 //Arthur: Procura no diretório indicado um arquivo com nome e tipo específico.
 unsigned char isInDir(unsigned char dirIndex, char* archiveName, char* archiveType, FS fileSystem) {
     unsigned char c = VAZIO;
-    setPointerToCluster(fileSystem, dirIndex);
-    while(c!=END_OF_FILE) {
-        fread(&c, sizeof(unsigned char), 1, fileSystem.arquivo);
-        if (!strcmp(archiveName, fileSystem.clusters[c].nome) && !strcmp(archiveType, fileSystem.clusters[c].tipo)) 
+    setPointerToCluster(fileSystem, dirIndex);      
+    while(c!=END_OF_FILE) {                  
+        fread(&c, sizeof(unsigned char), 1, fileSystem.arquivo);        
+        if (!strcmp(archiveName, fileSystem.clusters[c].nome) && !strcmp(archiveType, fileSystem.clusters[c].tipo)) {
             return c;
+        }           
     }
     return VAZIO;
 }
@@ -283,12 +251,9 @@ void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned cha
     if (breakPoint != NULL && upperPath[0] != '\0' && lowerArchiveName[0] != '\0')
         *lowerArchiveIndex = isInDir(*upperArchiveIndex,lowerArchiveName, lowerArchiveType, fileSystem);
 }
-
 /*
 ==== FUNÇÕES DE COMANDOS ====
 */
-
-
 //Altera o diretório atual a partir do caminho, se ele existir
 void cd(char* path, FS* fileSystem) {
     unsigned char currDir = getDirIndex(path, *fileSystem);
@@ -420,15 +385,15 @@ void make(char* name, char* type, FS fileSystem) {
 
 //Tiago
 void edit(char* path, char* text, FS fileSystem) {//Função edit. Executa o comando EDIT. Recebe o caminho do arquivo, o texto para inserir, fileSystem.
-    unsigned char cIndex;//Comentário linha 240.
+      unsigned char originUpper, originLower;
 
-    cIndex = getTXTIndex(path,fileSystem);//Define o índice do caminho entregue.  
+    getLastTwoIndex(path, &originUpper, &originLower, fileSystem);
 
-    if(cIndex == VAZIO){//Caso o diretório não exista, executa:
+    if(originUpper == VAZIO){//Caso o diretório não exista, executa:
         printf("Esse diretorio nao existe\n");
     }else{//Se não, caso normal:
-        if(strcmp(fileSystem.clusters[cIndex].tipo,"txt")==0){
-            OverWriteAt(fileSystem,text,cIndex);//Executa função auxiliar de escrita.
+        if(strcmp(fileSystem.clusters[originUpper].tipo,"txt")==0){
+            OverWriteAt(fileSystem,text,originUpper);//Executa função auxiliar de escrita.
             saveFS(fileSystem);//Salva o arquivo.
         }else{
             printf("Arquivo inválido para edição.\n");
@@ -463,18 +428,22 @@ void move(char* srcPath, char* destPath, FS* fileSystem) {
 
 //Tiago
 void renameFile(char* path, char* name, FS fileSystem) {//Função renameFile. Executa o comando RENAME. Recebe o caminho do arquivo, o nome novo e o fileSystem.
-    unsigned char cIndex;//Índice atual. Do inglês, current index.
+    unsigned char originUpper, originLower;
 
-    cIndex = getDirIndex(path,fileSystem);//Define o índice do caminho entregue.
-
-    if(cIndex == VAZIO){//Caso o diretório não exista, executa:
+    getLastTwoIndex(path, &originUpper, &originLower, fileSystem);
+    
+    if(originUpper == VAZIO){//Caso o diretório não exista, executa:
         printf("Esse diretorio nao existe\n");//Prompt de erro em caso de diretório incorreto.
     }else{//Se não, caso normal:
-        if(!(strcmp(name,"\0")==0)){
-            strcpy(fileSystem.clusters[cIndex].nome,name);//Executa a troca de nome.
-            saveFS(fileSystem);//Salva o arquivo.
-        }else{
-            printf("Nome inválido para renomear. Detalhe: nome vazio.\n");//Prompt de erro em caso de diretório incorreto.
+        if(originLower == VAZIO){            
+            printf("Arquivo inválido.\n");//Prompt de erro em caso de diretório incorreto.           
+        }else{        
+            if(isInDir(originUpper, name, fileSystem.clusters[originLower].tipo, fileSystem)==VAZIO){
+                strcpy(fileSystem.clusters[originLower].nome,name);//Executa a troca de nome.
+                saveFS(fileSystem);//Salva o arquivo.
+            }else{
+                printf("Nome inválido para renomear. Detalhe: nome já utilizado.\n");//Prompt de erro em caso de diretório incorreto.
+            } 
         }
     }
 }

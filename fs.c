@@ -145,7 +145,7 @@ void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) 
     char auxChar;
     setPointerToCluster(fileSystem, dirIndex); // coloca o pointer no cluster
     // acha o fim do diretorio
-    while(item != '\xFE'){
+    while((unsigned char)item != END_OF_FILE){
         if ((unsigned char)item == VAZIO){
             fseek(fileSystem.arquivo, -1*sizeof(char), SEEK_CUR);
             auxChar = itemIndex;
@@ -166,7 +166,7 @@ void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) 
 unsigned char findNextOpenCluster(FS fileSystem) {
     int i = 0;
     while(i<TAM_INDICE){
-        if(fileSystem.indice[i] == '\xFF'){ // == VAZIO
+        if((unsigned char)fileSystem.indice[i] == VAZIO){
             return i;
         }
         i++;

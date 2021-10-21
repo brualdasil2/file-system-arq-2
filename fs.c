@@ -145,11 +145,17 @@ void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) 
     char auxChar;
     setPointerToCluster(fileSystem, dirIndex); // coloca o pointer no cluster
     // acha o fim do diretorio
-    while(item != '\xFE'){
+    while((unsigned char)item != END_OF_FILE){
+        if ((unsigned char)item == VAZIO){
+            fseek(fileSystem.arquivo, -1*sizeof(char), SEEK_CUR);
+            auxChar = itemIndex;
+            fwrite(&auxChar, sizeof(char), 1, fileSystem.arquivo);
+            return;
+        }
         fread(&item, sizeof(char), 1, fileSystem.arquivo);
     }
     //coloca mais um indice(dirIndex) e poe o FE
-    fseek(fileSystem.arquivo, (long int)(-1*sizeof(char)), SEEK_CUR);
+    fseek(fileSystem.arquivo, -1*sizeof(char), SEEK_CUR);
     auxChar = itemIndex;
     fwrite(&auxChar, sizeof(char), 1, fileSystem.arquivo);
     auxChar = END_OF_FILE;
@@ -160,7 +166,7 @@ void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) 
 unsigned char findNextOpenCluster(FS fileSystem) {
     int i = 0;
     while(i<TAM_INDICE){
-        if(fileSystem.indice[i] == '\xFF'){ // == VAZIO
+        if((unsigned char)fileSystem.indice[i] == VAZIO){
             return i;
         }
         i++;
@@ -342,42 +348,36 @@ void separatePaths(char* fullPath, char* path, char* itemName){
         }
 }
 
-void mkdir(char* name, FS fileSystem) {
-    char dirName[200] = "";
-    unsigned char clusterIndex = findNextOpenCluster(fileSystem);
-    fileSystem.indice[clusterIndex] = END_OF_FILE;
-    if (name[0] == '/'){
-        char fullPath[200] = "";
-        char path[200] = "";
-        strcpy(fullPath, name);
-        separatePaths(fullPath, path,dirName);
-        int clusterOfDirIndex = getDirIndex(path, fileSystem);
-        appendItem(fileSystem, clusterOfDirIndex, clusterIndex);
-    }else{
-        strcpy(dirName,name);
-        appendItem(fileSystem, fileSystem.dirState.workingDirIndex ,clusterIndex);
-    }
-    strcpy(fileSystem.clusters[clusterIndex].nome, dirName);
-    strcpy(fileSystem.clusters[clusterIndex].tipo, "dir");
-    saveFS(fileSystem);
-}
-
 //Leo
 void make(char* name, char* type, FS fileSystem) {
-    char itemName[200] = "";
+    char itemName[200] = "";    //item inserido
+    char path[200] = "";        //caminho ate o item
+    // completa as strings acima
+    if (name[0] != '/'){ // mkfile file.txt -> cria no diretório atual.
+        strcpy(path, fileSystem.dirState.workingDir);
+        strcpy(itemName, name);
+    }else{ // caso /root/dir/file.txt -> cria no caminho especificado.
+        separatePaths(name, path,itemName); 
+    }
+    // Consistencia -> caminho valido ? Arquivo ja existe ? Tamanho do nome ?
+    unsigned char clusterOfDirIndex = getDirIndex(path, fileSystem);
+    if (clusterOfDirIndex == VAZIO){
+        printf("Caminho Invalido\n");
+        return;
+    }
+    if( isInDir(clusterOfDirIndex, itemName, type, fileSystem) != VAZIO){
+        printf("Arquivo ou diretorio ja existe\n");
+        return;
+    }
+    if(strlen(itemName)>19){
+        printf("Abortado! Nome muito grande");
+    }
+    // Altera o indice
     unsigned char clusterIndex = findNextOpenCluster(fileSystem);
     fileSystem.indice[clusterIndex] = END_OF_FILE;
-    if (name[0] == '/'){
-        char fullPath[200] = "";
-        char path[200] = "";
-        strcpy(fullPath, name);
-        separatePaths(fullPath, path,itemName);
-        int clusterOfDirIndex = getDirIndex(path, fileSystem);
-        appendItem(fileSystem, clusterOfDirIndex, clusterIndex);
-    }else{
-        strcpy(itemName, name);
-        appendItem(fileSystem, fileSystem.dirState.workingDirIndex ,clusterIndex);
-    }
+    // Altera o diretorio
+    appendItem(fileSystem, clusterOfDirIndex, clusterIndex);
+    // Salva o FS
     strcpy(fileSystem.clusters[clusterIndex].nome, itemName);
     strcpy(fileSystem.clusters[clusterIndex].tipo, type);
     saveFS(fileSystem);

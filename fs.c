@@ -295,7 +295,7 @@ void make(char* name, char* type, FS fileSystem) {
     }else{ // caso /root/dir/file.txt -> cria no caminho especificado.
         separatePaths(name, path,itemName); 
     }
-    // Consistencia -> caminho valido ? Arquivo ja existe ?
+    // Consistencia -> caminho valido ? Arquivo ja existe ? Tamanho do nome ?
     unsigned char clusterOfDirIndex = getDirIndex(path, fileSystem);
     if (clusterOfDirIndex == VAZIO){
         printf("Caminho Invalido\n");
@@ -304,6 +304,9 @@ void make(char* name, char* type, FS fileSystem) {
     if( isInDir(clusterOfDirIndex, itemName, type, fileSystem) != VAZIO){
         printf("Arquivo ou diretorio ja existe\n");
         return;
+    }
+    if(strlen(itemName)>19){
+        printf("Abortado! Nome muito grande");
     }
     // Altera o indice
     unsigned char clusterIndex = findNextOpenCluster(fileSystem);

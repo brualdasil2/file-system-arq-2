@@ -11,12 +11,13 @@
 #define I_INDICE 8
 #define I_ROOT 264
 #define MAX_CHAR TAM_CLUSTER - sizeof(CLUSTER) - 1
+#define MAX_PATH 256
 
 #define NOME_ARQUIVO "data.bin"
 
 
 typedef struct {
-    char workingDir[221];
+    char workingDir[MAX_PATH];
     unsigned char workingDirIndex;
 } DIR_STATE;
 

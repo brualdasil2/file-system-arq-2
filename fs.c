@@ -104,15 +104,15 @@ void saveFS(FS fileSystem) {
 //Retorna o índice do diretorio a partir do caminho, e VAZIO caso o caminho seja inválido
 unsigned char getDirIndex(char* path, FS fileSystem) {
     char copiedPath[200]; //cópia da string (declarada localmente) pra funcionar no strtok
-    strcpy(copiedPath, path);
+    strcpy(copiedPath, path);  
     char *dirName = strtok(copiedPath, "/"); //armazena nome do diretório a ser encontrado
     if (strcmp(dirName, "root")) { //testa se o primeiro dir é o root
         return VAZIO;
-    }
+    }     
     dirName = strtok(NULL, "/"); //pega o nome do primeiro subdiretório
-    unsigned char currDir = 0x00, c;
+    unsigned char currDir = 0x00, c;    
     int foundDir;
-    while (dirName) { //percorre cada subdiretório do caminho
+    while (dirName) { //percorre cada subdiretório do caminho         
         setPointerToCluster(fileSystem, currDir);
         foundDir = 0;
         while(!foundDir) { //percorre cada byte da área de dados do diretório atual
@@ -157,7 +157,49 @@ void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) 
 }
 
 //retorna o indice do primeiro cluster vazio na tabela
-unsigned char findNextOpenCluster(FS fileSystem) {}
+unsigned char findNextOpenCluster(FS fileSystem) {
+    int i = 0;
+    while(i<TAM_INDICE){
+        if(fileSystem.indice[i] == '\xFF'){ // == VAZIO
+            return i;
+        }
+        i++;
+    }
+    return CORROMPIDO;
+}
+
+void OverWriteAt(FS fileSystem, char* text, unsigned char cIndex){//Função auxiliar OverWriteAt. Recebe o fileSystem, o texto que será inserido, e o índice da tabela atual. Recursiva.
+  unsigned char nextClusterIndex;//Índice do próximo cluster.
+  char* temp;//String temporária.
+  char* extra;//String extra.
+  int i;//Variável para laços. 
+
+  setPointerToCluster(fileSystem,cIndex);//Aponta o sistema de escrita para o cluster do índice.
+  temp = (char*)malloc(MAX_CHAR*sizeof(char));//Define a string temporária.
+
+
+  if(strlen(text) < MAX_CHAR){//Caso o texto seja menor que a maior quantidade de caracteres do cluster,    
+      fwrite(text, strlen(text)+1, 1, fileSystem.arquivo);//Escreve o texto no cluster.
+  }else{//Se não, executa:
+      for(i=0;i<MAX_CHAR;i++){//Salva a parte que será salva no cluster atual em temp.
+          *(temp+i) = *(text+i);
+      }
+      *(temp+MAX_CHAR) = '\0';//Termina a escrita da string.
+
+      extra = (char*)malloc(sizeof(text)*sizeof(char));//Define a string extra.
+
+      for(i=MAX_CHAR;i<strlen(text)+1;i++){//Salva o que restou da string em extra.
+          *(extra+i-MAX_CHAR) = *(text+i);
+      }
+
+      fwrite(temp, sizeof(temp), 1, fileSystem.arquivo);//Escreve o texto no cluster atual.
+
+      nextClusterIndex = findNextOpenCluster(fileSystem);//Busca o índice do próximo cluster.
+      fileSystem.indice[cIndex] = nextClusterIndex;//Redefine a tabela atual do cluster para o próximo cluster.
+      fileSystem.indice[nextClusterIndex] = END_OF_FILE;//Define o próximo como END_OF_FILE.
+      OverWriteAt(fileSystem,extra,nextClusterIndex);//Recursivamente, escreve no próximo cluster.
+  }
+}
 
 //Arthur: Testa se o diretório está vazio.
 int dirIsEmpty(unsigned char dirIndex, FS fileSystem) {
@@ -172,11 +214,12 @@ int dirIsEmpty(unsigned char dirIndex, FS fileSystem) {
 //Arthur: Procura no diretório indicado um arquivo com nome e tipo específico.
 unsigned char isInDir(unsigned char dirIndex, char* archiveName, char* archiveType, FS fileSystem) {
     unsigned char c = VAZIO;
-    setPointerToCluster(fileSystem, dirIndex);
-    while(c!=END_OF_FILE) {
-        fread(&c, sizeof(unsigned char), 1, fileSystem.arquivo);
-        if (!strcmp(archiveName, fileSystem.clusters[c].nome) && !strcmp(archiveType, fileSystem.clusters[c].tipo)) 
+    setPointerToCluster(fileSystem, dirIndex);      
+    while(c!=END_OF_FILE) {                  
+        fread(&c, sizeof(unsigned char), 1, fileSystem.arquivo);        
+        if (!strcmp(archiveName, fileSystem.clusters[c].nome) && !strcmp(archiveType, fileSystem.clusters[c].tipo)) {
             return c;
+        }           
     }
     return VAZIO;
 }
@@ -208,12 +251,9 @@ void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned cha
     if (breakPoint != NULL && upperPath[0] != '\0' && lowerArchiveName[0] != '\0')
         *lowerArchiveIndex = isInDir(*upperArchiveIndex,lowerArchiveName, lowerArchiveType, fileSystem);
 }
-
 /*
 ==== FUNÇÕES DE COMANDOS ====
 */
-
-
 //Altera o diretório atual a partir do caminho, se ele existir
 void cd(char* path, FS* fileSystem) {
     unsigned char currDir = getDirIndex(path, *fileSystem);
@@ -279,27 +319,86 @@ void rm(char* path, FS* fileSystem) {
 }
 
 //Leo
-void mkdir(char* name, FS fileSystem) {}
+
+void separatePaths(char* fullPath, char* path, char* itemName){
+    int i, j, lastBarIndex;
+    i = j = lastBarIndex = 0;
+    while (fullPath[i] != '\0'){
+            if(fullPath[i]=='/'){
+                lastBarIndex = i;
+            }
+            i++;
+        }
+        i=0;
+        while(i<lastBarIndex){
+            path[i]=fullPath[i];
+            i++;
+        }
+        i++;
+        while(fullPath[i]!= '\0'){
+            itemName[j] = fullPath[i];
+            i++;
+            j++;
+        }
+}
+
+void mkdir(char* name, FS fileSystem) {
+    char dirName[200] = "";
+    unsigned char clusterIndex = findNextOpenCluster(fileSystem);
+    fileSystem.indice[clusterIndex] = END_OF_FILE;
+    if (name[0] == '/'){
+        char fullPath[200] = "";
+        char path[200] = "";
+        strcpy(fullPath, name);
+        separatePaths(fullPath, path,dirName);
+        int clusterOfDirIndex = getDirIndex(path, fileSystem);
+        appendItem(fileSystem, clusterOfDirIndex, clusterIndex);
+    }else{
+        strcpy(dirName,name);
+        appendItem(fileSystem, fileSystem.dirState.workingDirIndex ,clusterIndex);
+    }
+    strcpy(fileSystem.clusters[clusterIndex].nome, dirName);
+    strcpy(fileSystem.clusters[clusterIndex].tipo, "dir");
+    saveFS(fileSystem);
+}
 
 //Leo
-void mkfile(char* name, FS fileSystem) {}
+void make(char* name, char* type, FS fileSystem) {
+    char itemName[200] = "";
+    unsigned char clusterIndex = findNextOpenCluster(fileSystem);
+    fileSystem.indice[clusterIndex] = END_OF_FILE;
+    if (name[0] == '/'){
+        char fullPath[200] = "";
+        char path[200] = "";
+        strcpy(fullPath, name);
+        separatePaths(fullPath, path,itemName);
+        int clusterOfDirIndex = getDirIndex(path, fileSystem);
+        appendItem(fileSystem, clusterOfDirIndex, clusterIndex);
+    }else{
+        strcpy(itemName, name);
+        appendItem(fileSystem, fileSystem.dirState.workingDirIndex ,clusterIndex);
+    }
+    strcpy(fileSystem.clusters[clusterIndex].nome, itemName);
+    strcpy(fileSystem.clusters[clusterIndex].tipo, type);
+    saveFS(fileSystem);
+}
 
 //Tiago
-void edit(char* path, char* text, FS fileSystem) {
-    /*
-    IDEIA/sugestao:
+void edit(char* path, char* text, FS fileSystem) {//Função edit. Executa o comando EDIT. Recebe o caminho do arquivo, o texto para inserir, fileSystem.
+    unsigned char originUpper, originLower;
 
-    if (sizeof(text) < TAM_CLUSTER - sizeof(CLUSTER)) {
-        escreve normalmente
-    }
-    else {
-        separa em duas strings: string A com o max de chars que cabem no cluster, e string B com o resto
-        escreve string A aqui
-        acha o prox cluster
-        chama essa funcao recursivamente pro prox cluster
-    }
+    getLastTwoIndex(path, &originUpper, &originLower, fileSystem);//Recupera o índice do arquivo e do diretório.
 
-*/
+    if(originLower == VAZIO){//Caso o arquivo não exista, executa:
+        printf("Esse diretorio nao existe\n");
+    }else{//Se não, caso normal:
+        if(strcmp(fileSystem.clusters[originLower].tipo,"txt")==0){
+            OverWriteAt(fileSystem,text,originLower);//Executa função auxiliar de escrita.
+            saveFS(fileSystem);//Salva o arquivo.
+        }else{
+            printf("Arquivo inválido para edição.\n");
+        }        
+    }
 }
 
 //Arthur: Move um arquivo para uma pasta designada
@@ -328,4 +427,23 @@ void move(char* srcPath, char* destPath, FS* fileSystem) {
 }
 
 //Tiago
-void renameFile(char* path, char* name, FS fileSystem) {}
+void renameFile(char* path, char* name, FS fileSystem) {//Função renameFile. Executa o comando RENAME. Recebe o caminho do arquivo, o nome novo e o fileSystem.
+    unsigned char originUpper, originLower;
+
+    getLastTwoIndex(path, &originUpper, &originLower, fileSystem);
+    
+    if(originUpper == VAZIO){//Caso o diretório não exista, executa:
+        printf("Esse diretorio nao existe\n");//Prompt de erro em caso de diretório incorreto.
+    }else{//Se não, caso normal:
+        if(originLower == VAZIO){            
+            printf("Arquivo inválido.\n");//Prompt de erro em caso de arquivo inválido.           
+        }else{//Se não, caso normal:  
+            if(isInDir(originUpper, name, fileSystem.clusters[originLower].tipo, fileSystem)==VAZIO){
+                strcpy(fileSystem.clusters[originLower].nome,name);//Executa a troca de nome.
+                saveFS(fileSystem);//Salva o arquivo.
+            }else{
+                printf("Nome inválido para renomear. Detalhe: nome já utilizado.\n");//Prompt de erro em caso de nome inválido.
+            } 
+        }
+    }
+}

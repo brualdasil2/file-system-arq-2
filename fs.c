@@ -229,6 +229,20 @@ unsigned char isInDir(unsigned char dirIndex, char* archiveName, char* archiveTy
     }
     return VAZIO;
 }
+
+//Recebe um nome da forma "arquivo.txt" e armazena em duas strings "arquivo" e "txt". Retorna 1 em sucesso e 0 em erro
+unsigned char separateFileNameAndType(char* fullName, char** fileName, char** fileType) {
+    int nameSize = strlen(fullName);
+    if (fullName[nameSize - 4] != '.') {
+        return 0;
+    }
+    else {
+        *fileName = strtok(fullName, ".");
+        *fileType = strtok(NULL, ".");
+        return 1;
+    }
+}
+
 //Arthur: Guarda o valor dos indíces do arquivo inferior(último no path) e arquivo superior(penúltimo no path), altera para VAZIO se inválido.
 void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned char* lowerArchiveIndex, FS fileSystem) {
     char* breakPoint;

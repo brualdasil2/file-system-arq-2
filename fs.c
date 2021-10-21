@@ -286,21 +286,31 @@ void separatePaths(char* fullPath, char* path, char* itemName){
 
 //Leo
 void make(char* name, char* type, FS fileSystem) {
-    char itemName[200] = "";
+    char itemName[200] = "";    //item inserido
+    char path[200] = "";        //caminho ate o item
+    // completa as strings acima
+    if (name[0] != '/'){ // mkfile file.txt -> cria no diretório atual.
+        strcpy(path, fileSystem.dirState.workingDir);
+        strcpy(itemName, name);
+    }else{ // caso /root/dir/file.txt -> cria no caminho especificado.
+        separatePaths(name, path,itemName); 
+    }
+    // Consistencia -> caminho valido ? Arquivo ja existe ?
+    unsigned char clusterOfDirIndex = getDirIndex(path, fileSystem);
+    if (clusterOfDirIndex == VAZIO){
+        printf("Caminho Invalido\n");
+        return;
+    }
+    if( isInDir(clusterOfDirIndex, itemName, type, fileSystem) != VAZIO){
+        printf("Arquivo ou diretorio ja existe\n");
+        return;
+    }
+    // Altera o indice
     unsigned char clusterIndex = findNextOpenCluster(fileSystem);
     fileSystem.indice[clusterIndex] = END_OF_FILE;
-    if (name[0] == '/'){
-        char fullPath[200] = "";
-        char path[200] = "";
-        strcpy(fullPath, name);
-        separatePaths(fullPath, path,itemName);
-        int clusterOfDirIndex = getDirIndex(path, fileSystem);
-        appendItem(fileSystem, clusterOfDirIndex, clusterIndex);
-        
-    }else{
-        strcpy(itemName, name);
-        appendItem(fileSystem, fileSystem.dirState.workingDirIndex ,clusterIndex);
-    }
+    // Altera o diretorio
+    appendItem(fileSystem, clusterOfDirIndex, clusterIndex);
+    // Salva o FS
     strcpy(fileSystem.clusters[clusterIndex].nome, itemName);
     strcpy(fileSystem.clusters[clusterIndex].tipo, type);
     saveFS(fileSystem);

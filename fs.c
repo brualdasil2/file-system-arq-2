@@ -80,7 +80,7 @@ FS initFS() {
     //setta estado do diretório atual
     fileSystem.dirState.workingDirIndex = 0;
     strcpy(fileSystem.dirState.workingDir, "root");
-
+    
     return fileSystem;
 }
 
@@ -103,7 +103,7 @@ void saveFS(FS fileSystem) {
 }
 //Retorna o índice do diretorio a partir do caminho, e VAZIO caso o caminho seja inválido
 unsigned char getDirIndex(char* path, FS fileSystem) {
-    char copiedPath[200]; //cópia da string (declarada localmente) pra funcionar no strtok
+    char copiedPath[MAX_PATH]; //cópia da string (declarada localmente) pra funcionar no strtok
     strcpy(copiedPath, path);  
     char *dirName = strtok(copiedPath, "/"); //armazena nome do diretório a ser encontrado
     if (strcmp(dirName, "root")) { //testa se o primeiro dir é o root
@@ -147,7 +147,7 @@ void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) 
     // acha o fim do diretorio
     while((unsigned char)item != END_OF_FILE){
         if ((unsigned char)item == VAZIO){
-            fseek(fileSystem.arquivo, -1*sizeof(char), SEEK_CUR);
+            fseek(fileSystem.arquivo, (long int)(-1*sizeof(char)), SEEK_CUR);
             auxChar = itemIndex;
             fwrite(&auxChar, sizeof(char), 1, fileSystem.arquivo);
             return;
@@ -155,7 +155,7 @@ void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) 
         fread(&item, sizeof(char), 1, fileSystem.arquivo);
     }
     //coloca mais um indice(dirIndex) e poe o FE
-    fseek(fileSystem.arquivo, -1*sizeof(char), SEEK_CUR);
+    fseek(fileSystem.arquivo, (long int)(-1*sizeof(char)), SEEK_CUR);
     auxChar = itemIndex;
     fwrite(&auxChar, sizeof(char), 1, fileSystem.arquivo);
     auxChar = END_OF_FILE;
@@ -247,15 +247,21 @@ unsigned char separateFileNameAndType(char* fullName, char** fileName, char** fi
 void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned char* lowerArchiveIndex, FS fileSystem) {
     char* breakPoint;
     char* lowerArchiveName;
-    char lowerArchiveType[4];
+    char lowerArchiveType[4] = "dir";
+    char upperPath[MAX_PATH];
+
     if(path == NULL) return;
-    char upperPath[strlen(path)];
 
     strcpy(upperPath,path);
     breakPoint = strrchr(upperPath, '/');
     if (breakPoint != NULL) {
         breakPoint[0] = '\0';
         lowerArchiveName = breakPoint + 1;
+
+        if (lowerArchiveName[strlen(lowerArchiveName) - 4] == '.') {
+            strcpy(lowerArchiveType, lowerArchiveName + strlen(lowerArchiveName) - 3);
+            lowerArchiveName[strlen(lowerArchiveName) - 4] = '\0';
+        }
     }
 
     if (upperPath[0] != '\0') //getDirIndex da crash se receber '\0'
@@ -263,11 +269,6 @@ void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned cha
 
     *lowerArchiveIndex = (unsigned char)VAZIO;
 
-    if (lowerArchiveName[strlen(lowerArchiveName) - 4] == '.') {
-        strcpy(lowerArchiveType, lowerArchiveName + strlen(lowerArchiveName) - 3);
-        lowerArchiveName[strlen(lowerArchiveName) - 4] = '\0';
-    }
-    else strcpy(lowerArchiveType, "dir");
     if (breakPoint != NULL && upperPath[0] != '\0' && lowerArchiveName[0] != '\0')
         *lowerArchiveIndex = isInDir(*upperArchiveIndex,lowerArchiveName, lowerArchiveType, fileSystem);
 }
@@ -366,8 +367,8 @@ void separatePaths(char* fullPath, char* path, char* itemName){
 
 //Leo
 void make(char* name, char* type, FS* fileSystem) {
-    char itemName[200] = "";    //item inserido
-    char path[200] = "";        //caminho ate o item
+    char itemName[MAX_PATH] = "";    //item inserido
+    char path[MAX_PATH] = "";        //caminho ate o item
     // completa as strings acima
     if (name[0] != '/'){ // mkfile file.txt -> cria no diretório atual.
         strcpy(path, fileSystem->dirState.workingDir);

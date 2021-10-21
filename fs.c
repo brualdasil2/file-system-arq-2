@@ -463,8 +463,14 @@ void move(char* srcPath, char* destPath, FS* fileSystem) {
 //Tiago
 void renameFile(char* path, char* name, FS* fileSystem) {//Função renameFile. Executa o comando RENAME. Recebe o caminho do arquivo, o nome novo e o fileSystem.
     unsigned char originUpper, originLower;
+    int i;
 
     getLastTwoIndex(path, &originUpper, &originLower, *fileSystem);
+    
+    i = strlen(name);  
+    if(name[i-4] == '.'){//Caso o usuário insira um nome com fim .txt
+        name[i-4] = '\0';
+    }
     
     if(originUpper == VAZIO){//Caso o diretório não exista, executa:
         printf("Esse diretorio nao existe\n");//Prompt de erro em caso de diretório incorreto.

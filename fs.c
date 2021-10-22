@@ -103,7 +103,7 @@ void saveFS(FS fileSystem) {
 }
 //Retorna o índice do diretorio a partir do caminho, e VAZIO caso o caminho seja inválido
 unsigned char getDirIndex(char* path, FS fileSystem) {
-    char copiedPath[200]; //cópia da string (declarada localmente) pra funcionar no strtok
+    char copiedPath[MAX_PATHNAME_SIZE]; //cópia da string (declarada localmente) pra funcionar no strtok
     strcpy(copiedPath, path);  
     char *dirName = strtok(copiedPath, "/"); //armazena nome do diretório a ser encontrado
     if (strcmp(dirName, "root")) { //testa se o primeiro dir é o root
@@ -235,7 +235,7 @@ unsigned char isInDir(unsigned char dirIndex, char* archiveName, char* archiveTy
 //Recebe um nome da forma "arquivo.txt" e armazena em duas strings "arquivo" e "txt". Retorna 1 em sucesso e 0 em erro
 unsigned char separateFileNameAndType(char* fullName, char** fileName, char** fileType) {
     int nameSize = strlen(fullName);
-    if (fullName[nameSize - 4] != '.') {
+    if (fullName[nameSize - EXTENSION_SIZE] != '.') {
         return 0;
     }
     else {
@@ -249,7 +249,7 @@ unsigned char separateFileNameAndType(char* fullName, char** fileName, char** fi
 void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned char* lowerArchiveIndex, FS fileSystem) {
     char* breakPoint;
     char* lowerArchiveName;
-    char lowerArchiveType[4];
+    char lowerArchiveType[EXTENSION_SIZE];
     if(path == NULL) return;
     char upperPath[strlen(path)];
 
@@ -265,9 +265,9 @@ void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned cha
 
     *lowerArchiveIndex = (unsigned char)VAZIO;
 
-    if (lowerArchiveName[strlen(lowerArchiveName) - 4] == '.') {
-        strcpy(lowerArchiveType, lowerArchiveName + strlen(lowerArchiveName) - 3);
-        lowerArchiveName[strlen(lowerArchiveName) - 4] = '\0';
+    if (lowerArchiveName[strlen(lowerArchiveName) - EXTENSION_SIZE] == '.') {
+        strcpy(lowerArchiveType, lowerArchiveName + strlen(lowerArchiveName) - EXTENSION_SIZE + 1);
+        lowerArchiveName[strlen(lowerArchiveName) - EXTENSION_SIZE] = '\0';
     }
     else strcpy(lowerArchiveType, "dir");
     if (breakPoint != NULL && upperPath[0] != '\0' && lowerArchiveName[0] != '\0')
@@ -368,8 +368,8 @@ void separatePaths(char* fullPath, char* path, char* itemName){
 
 //Leo
 void make(char* name, char* type, FS* fileSystem) {
-    char itemName[200] = "";    //item inserido
-    char path[200] = "";        //caminho ate o item
+    char itemName[MAX_FILENAME_SIZE + EXTENSION_SIZE] = "";    //item inserido
+    char path[MAX_PATHNAME_SIZE] = "";        //caminho ate o item
     // completa as strings acima
     if (name[0] != '/'){ // mkfile file.txt -> cria no diretório atual.
         strcpy(path, fileSystem->dirState.workingDir);
@@ -387,8 +387,8 @@ void make(char* name, char* type, FS* fileSystem) {
         printf("Arquivo ou diretorio ja existe\n");
         return;
     }
-    if(strlen(itemName)>19){
-        printf("Abortado! Nome muito grande");
+    if(strlen(itemName)>MAX_FILENAME_SIZE + EXTENSION_SIZE){
+        printf("Abortado! Nome muito grande\n");
     }
     // Altera o indice
     unsigned char clusterIndex = findNextOpenCluster(*fileSystem);
@@ -477,8 +477,8 @@ void renameFile(char* path, char* name, FS* fileSystem) {//Função renameFile. 
             if(isInDir(originUpper, name, fileSystem->clusters[originLower].tipo, *fileSystem)==VAZIO){
                 strcpy(fileSystem->clusters[originLower].nome,name);//Executa a troca de nome.
                 if (originLower == fileSystem->dirState.workingDirIndex) {
-                    char upperPath[200];
-                    char filler[30];
+                    char upperPath[MAX_PATHNAME_SIZE];
+                    char filler[MAX_FILENAME_SIZE];
                     separatePaths(path, upperPath, filler);
                     strcat(upperPath, "/");
                     strcat(upperPath, name);

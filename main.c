@@ -4,10 +4,9 @@
 
 int main() {
     FS fileSystem = initFS();
-
     const char spc[2] = " ";
     const char dQuotes[2] = "\"";
-    char input[210]; 
+    char input[210];
     char inputClone[210];
     char *cmd,*path,*editContent;
     fclose(fileSystem.arquivo);

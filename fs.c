@@ -504,34 +504,32 @@ void renameFile(char* path, char* name, FS* fileSystem) {//Função renameFile. 
 }
 
 int disk(FS fileSystem, unsigned char dir){
-    unsigned char c = VAZIO;
-    unsigned char h = VAZIO;
-    int d,s;
-    d = 1;
-    long state;
-    unsigned char f = VAZIO;
-    unsigned char e = VAZIO;
+    unsigned char itemfromDir = VAZIO;  // item que sera inspecionado
+    int dirSize = 1;                    // armazena o tamanho ( vale 1 porque o diretorio 1 quando vazio)
+
     setPointerToCluster(fileSystem, dir);
-    fread(&c, sizeof(char), 1, fileSystem.arquivo);
-    while(c != END_OF_FILE){
-        printf("%u\n", (unsigned int)c);
-        if((unsigned char)fileSystem.indice[c] != END_OF_FILE){
-            printf("%x",fileSystem.indice[c]);
-            h = c;
-            while(h!= END_OF_FILE){
-                h = fileSystem.indice[h];
-                d++;
-            }        
-        }else if(strcmp(fileSystem.clusters[c].tipo, "dir")==0){
-            state = ftell(fileSystem.arquivo);
-            d += disk(fileSystem, c);
+    // le 1 item -> podem ser 4 casos: (1) arquivo > 1 cluster / (2) diretorio / (3)arquivo de 1 cluster / (4) fim do dir
+    fread(&itemfromDir, sizeof(char), 1, fileSystem.arquivo);
+    while(itemfromDir != END_OF_FILE){
+        // (1) -> percorre o indice ate achar o fim do arquivo (incrementando o tamanho do diretorio)
+        if((unsigned char)fileSystem.indice[itemfromDir] != END_OF_FILE){
+            if (itemfromDir!=VAZIO){ // se for vazio pular
+                unsigned char aux = itemfromDir;    // variavel auxiliar, para nao perder o valor do itemFromDir
+                while(aux!= END_OF_FILE){
+                    aux = fileSystem.indice[aux];
+                    dirSize++;
+                } 
+            }
+        // (2) -> salva o estado do filePointer e chama essa funcao recursivamente para o diretorio       
+        }else if(strcmp(fileSystem.clusters[itemfromDir].tipo, "dir")==0){
+            long state = ftell(fileSystem.arquivo);
+            dirSize += disk(fileSystem, itemfromDir);
             fseek(fileSystem.arquivo, state, SEEK_SET);
+        // (3) -> somente incrementa o tamanho do diretorio
         }else{
-            d++;
+            dirSize++;
         }
-        //printf("%ld", ftell(fileSystem.arquivo));
-        printf("\n");
-        fread(&c, sizeof(char), 1, fileSystem.arquivo);
+        fread(&itemfromDir, sizeof(char), 1, fileSystem.arquivo);
     }
-    return d;
+    return dirSize; // *32 porque a resposta eh em KB
 }

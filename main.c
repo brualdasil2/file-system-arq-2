@@ -4,9 +4,10 @@
 
 int main() {
     FS fileSystem = initFS();
+
     const char spc[2] = " ";
     const char dQuotes[2] = "\"";
-    char input[210];
+    char input[210]; 
     char inputClone[210];
     char *cmd,*path,*editContent;
     fclose(fileSystem.arquivo);
@@ -45,6 +46,9 @@ int main() {
         }
         else if(!strcmp("RENAME",cmd)) {
             renameFile(path, strtok(NULL,spc), &fileSystem);
+        }
+        else if(!strcmp("DISK",cmd)){
+            printf("Valor ocupado %d\n", disk(fileSystem, fileSystem.dirState.workingDirIndex));
         }
         else if(!strcmp("EXIT",cmd)) {
             fclose(fileSystem.arquivo);

@@ -11,7 +11,7 @@
 #define I_INDICE 8
 #define I_ROOT 264
 
-#define MAX_PATHNAME_SIZE 221
+#define MAX_PATHNAME_SIZE 256
 #define MAX_FILENAME_SIZE 20
 #define EXTENSION_SIZE 4
 #define MAX_CHAR TAM_CLUSTER - sizeof(CLUSTER) - 1

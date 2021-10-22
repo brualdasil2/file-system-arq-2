@@ -80,7 +80,7 @@ FS initFS() {
     //setta estado do diretório atual
     fileSystem.dirState.workingDirIndex = 0;
     strcpy(fileSystem.dirState.workingDir, "root");
-
+    
     return fileSystem;
 }
 
@@ -147,7 +147,7 @@ void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) 
     // acha o fim do diretorio
     while((unsigned char)item != END_OF_FILE){
         if ((unsigned char)item == VAZIO){
-            fseek(fileSystem.arquivo, -1*sizeof(char), SEEK_CUR);
+            fseek(fileSystem.arquivo, (long int)(-1*sizeof(char)), SEEK_CUR);
             auxChar = itemIndex;
             fwrite(&auxChar, sizeof(char), 1, fileSystem.arquivo);
             return;
@@ -155,7 +155,7 @@ void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) 
         fread(&item, sizeof(char), 1, fileSystem.arquivo);
     }
     //coloca mais um indice(dirIndex) e poe o FE
-    fseek(fileSystem.arquivo, -1*sizeof(char), SEEK_CUR);
+    fseek(fileSystem.arquivo, (long int)(-1*sizeof(char)), SEEK_CUR);
     auxChar = itemIndex;
     fwrite(&auxChar, sizeof(char), 1, fileSystem.arquivo);
     auxChar = END_OF_FILE;
@@ -165,12 +165,14 @@ void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) 
 //retorna o indice do primeiro cluster vazio na tabela
 unsigned char findNextOpenCluster(FS fileSystem) {
     int i = 0;
-    while(i<fileSystem.meta.tam_indice){
+
+    while(i<fileSystem.meta.tam_indice-3){
         if((unsigned char)fileSystem.indice[i] == VAZIO){
             return i;
         }
         i++;
     }
+    // se esta cheio retorna corrompido
     return CORROMPIDO;
 }
 
@@ -249,15 +251,21 @@ unsigned char separateFileNameAndType(char* fullName, char** fileName, char** fi
 void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned char* lowerArchiveIndex, FS fileSystem) {
     char* breakPoint;
     char* lowerArchiveName;
-    char lowerArchiveType[EXTENSION_SIZE];
+    char lowerArchiveType[EXTENSION_SIZE] = "dir";
+    char upperPath[MAX_FILENAME_SIZE];
+
     if(path == NULL) return;
-    char upperPath[strlen(path)];
 
     strcpy(upperPath,path);
     breakPoint = strrchr(upperPath, '/');
     if (breakPoint != NULL) {
         breakPoint[0] = '\0';
         lowerArchiveName = breakPoint + 1;
+
+        if (lowerArchiveName[strlen(lowerArchiveName) - 4] == '.') {
+            strcpy(lowerArchiveType, lowerArchiveName + strlen(lowerArchiveName) - 3);
+            lowerArchiveName[strlen(lowerArchiveName) - 4] = '\0';
+        }
     }
 
     if (upperPath[0] != '\0') //getDirIndex da crash se receber '\0'
@@ -265,11 +273,6 @@ void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned cha
 
     *lowerArchiveIndex = (unsigned char)VAZIO;
 
-    if (lowerArchiveName[strlen(lowerArchiveName) - EXTENSION_SIZE] == '.') {
-        strcpy(lowerArchiveType, lowerArchiveName + strlen(lowerArchiveName) - EXTENSION_SIZE + 1);
-        lowerArchiveName[strlen(lowerArchiveName) - EXTENSION_SIZE] = '\0';
-    }
-    else strcpy(lowerArchiveType, "dir");
     if (breakPoint != NULL && upperPath[0] != '\0' && lowerArchiveName[0] != '\0')
         *lowerArchiveIndex = isInDir(*upperArchiveIndex,lowerArchiveName, lowerArchiveType, fileSystem);
 }
@@ -341,7 +344,6 @@ void rm(char* path, FS* fileSystem) {
 }
 
 //Leo
-
 void separatePaths(char* fullPath, char* path, char* itemName){
     int i, j, lastBarIndex;
     i = j = lastBarIndex = 0;
@@ -366,37 +368,40 @@ void separatePaths(char* fullPath, char* path, char* itemName){
     itemName[j] = '\0';
 }
 
+// se o nome tem uma barra retorna -1 (invalido), se nao tem retorna 1 (valido)
+int validateName(char* name){
+    if (strlen(name)>19) return-1;
+    for(int i=0 ; i<strlen(name) ; i++){
+        if (name[i] == '/'){
+            return -1;
+        }
+    }
+    return 1;
+}
+
 //Leo
 void make(char* name, char* type, FS* fileSystem) {
-    char itemName[MAX_FILENAME_SIZE + EXTENSION_SIZE] = "";    //item inserido
-    char path[MAX_PATHNAME_SIZE] = "";        //caminho ate o item
-    // completa as strings acima
-    if (name[0] != '/'){ // mkfile file.txt -> cria no diretório atual.
-        strcpy(path, fileSystem->dirState.workingDir);
-        strcpy(itemName, name);
-    }else{ // caso /root/dir/file.txt -> cria no caminho especificado.
-        separatePaths(name, path,itemName); 
-    }
-    // Consistencia -> caminho valido ? Arquivo ja existe ? Tamanho do nome ?
-    unsigned char clusterOfDirIndex = getDirIndex(path, *fileSystem);
-    if (clusterOfDirIndex == VAZIO){
-        printf("Caminho Invalido\n");
+    // Consistencia -> Nome valido? Arquivo ja existe ? Armazenamento está cheio ?
+    if (validateName(name) == -1 ){
+        printf("Nome invalido!\n");
         return;
     }
-    if( isInDir(clusterOfDirIndex, itemName, type, *fileSystem) != VAZIO){
+    if( isInDir(fileSystem->dirState.workingDirIndex, name, type, *fileSystem) != VAZIO){
         printf("Arquivo ou diretorio ja existe\n");
         return;
     }
-    if(strlen(itemName)>MAX_FILENAME_SIZE + EXTENSION_SIZE){
-        printf("Abortado! Nome muito grande\n");
-    }
-    // Altera o indice
     unsigned char clusterIndex = findNextOpenCluster(*fileSystem);
+    if (clusterIndex == CORROMPIDO){
+        printf("Seu Armazenamento está cheio!\n");
+        return;
+    }
+
+    // Altera o indice
     fileSystem->indice[clusterIndex] = END_OF_FILE;
     // Altera o diretorio
-    appendItem(*fileSystem, clusterOfDirIndex, clusterIndex);
+    appendItem(*fileSystem, fileSystem->dirState.workingDirIndex, clusterIndex);
     // Salva o FS
-    strcpy(fileSystem->clusters[clusterIndex].nome, itemName);
+    strcpy(fileSystem->clusters[clusterIndex].nome, name);
     strcpy(fileSystem->clusters[clusterIndex].tipo, type);
     saveFS(*fileSystem);
 }
@@ -465,8 +470,14 @@ void move(char* srcPath, char* destPath, FS* fileSystem) {
 //Tiago
 void renameFile(char* path, char* name, FS* fileSystem) {//Função renameFile. Executa o comando RENAME. Recebe o caminho do arquivo, o nome novo e o fileSystem.
     unsigned char originUpper, originLower;
+    int i;
 
     getLastTwoIndex(path, &originUpper, &originLower, *fileSystem);
+    
+    i = strlen(name);  
+    if(name[i-4] == '.'){//Caso o usuário insira um nome com fim .txt
+        name[i-4] = '\0';
+    }
     
     if(originUpper == VAZIO){//Caso o diretório não exista, executa:
         printf("Esse diretorio nao existe\n");//Prompt de erro em caso de diretório incorreto.

@@ -252,7 +252,7 @@ void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned cha
     char* breakPoint;
     char* lowerArchiveName;
     char lowerArchiveType[EXTENSION_SIZE] = "dir";
-    char upperPath[MAX_FILENAME_SIZE];
+    char upperPath[MAX_PATHNAME_SIZE];
 
     if(path == NULL) return;
 

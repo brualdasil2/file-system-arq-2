@@ -464,8 +464,14 @@ void move(char* srcPath, char* destPath, FS* fileSystem) {
 //Tiago
 void renameFile(char* path, char* name, FS* fileSystem) {//Função renameFile. Executa o comando RENAME. Recebe o caminho do arquivo, o nome novo e o fileSystem.
     unsigned char originUpper, originLower;
+    int i;
 
     getLastTwoIndex(path, &originUpper, &originLower, *fileSystem);
+    
+    i = strlen(name);  
+    if(name[i-4] == '.'){//Caso o usuário insira um nome com fim .txt
+        name[i-4] = '\0';
+    }
     
     if(originUpper == VAZIO){//Caso o diretório não exista, executa:
         printf("Esse diretorio nao existe\n");//Prompt de erro em caso de diretório incorreto.
@@ -476,7 +482,7 @@ void renameFile(char* path, char* name, FS* fileSystem) {//Função renameFile. 
             if(isInDir(originUpper, name, fileSystem->clusters[originLower].tipo, *fileSystem)==VAZIO){
                 strcpy(fileSystem->clusters[originLower].nome,name);//Executa a troca de nome.
                 if (originLower == fileSystem->dirState.workingDirIndex) {
-                    char upperPath[200];
+                    char upperPath[MAX_PATH];
                     char filler[30];
                     separatePaths(path, upperPath, filler);
                     strcat(upperPath, "/");

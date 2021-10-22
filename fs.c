@@ -34,11 +34,11 @@ FS initFS() {
     if (arquivo = fileExists(NOME_ARQUIVO)) {
         //se o arquivo já existe, só lê os dados e salva no FS
         fread(&(fileSystem.meta), sizeof(fileSystem.meta), 1, arquivo); //lê metadados
-        fileSystem.indice = (char*)(malloc(sizeof(char)*TAM_INDICE)); //aloca espaço para o vetor de indices
-        fread(fileSystem.indice, TAM_INDICE, 1, arquivo); //lê índices
-        fileSystem.clusters = (CLUSTER*)(malloc(sizeof(CLUSTER)*TAM_INDICE)); //aloca espaço para o vetor de clusters
+        fileSystem.indice = (char*)(malloc(sizeof(char)*fileSystem.meta.tam_indice)); //aloca espaço para o vetor de indices
+        fread(fileSystem.indice, fileSystem.meta.tam_indice, 1, arquivo); //lê índices
+        fileSystem.clusters = (CLUSTER*)(malloc(sizeof(CLUSTER)*fileSystem.meta.tam_indice)); //aloca espaço para o vetor de clusters
         //percorre todos os clusters, lendo seus metadados
-        for (i = 0; i < TAM_INDICE; i++) {
+        for (i = 0; i < fileSystem.meta.tam_indice; i++) {
             fread(&(fileSystem.clusters[i]), sizeof(CLUSTER), 1, arquivo); //lê meta do cluster
             fseek(arquivo, TAM_CLUSTER - sizeof(CLUSTER), SEEK_CUR); //pula pro próximo
         }
@@ -47,15 +47,15 @@ FS initFS() {
     else {
         //se o arquivo não existe, cria o arquivo e escreve os dados padrão
         META_PROGRAMA meta = {TAM_INDICE, TAM_CLUSTER, I_INDICE, I_ROOT};
-        char* indice = (char*)(malloc(sizeof(char)*TAM_INDICE)); //aloca espaço para o vetor de indices
-        CLUSTER* clusters = (CLUSTER*)(malloc(sizeof(CLUSTER)*TAM_INDICE)); //aloca espaço para o vetor de clusters
+        char* indice = (char*)(malloc(sizeof(char)*meta.tam_indice)); //aloca espaço para o vetor de indices
+        CLUSTER* clusters = (CLUSTER*)(malloc(sizeof(CLUSTER)*meta.tam_indice)); //aloca espaço para o vetor de clusters
         arquivo = fopen(NOME_ARQUIVO, "wb+");
         fwrite(&meta, sizeof(meta), 1, arquivo); //escreve metadados
         char c = END_OF_FILE;
         fwrite(&c, sizeof(char), 1, arquivo); //escreve o root no indice
         indice[0] = c; //salva o valor pra ficar no FS
         c = VAZIO;
-        for (i = 1; i < TAM_INDICE; i++) {
+        for (i = 1; i < meta.tam_indice; i++) {
             fwrite(&c, sizeof(char), 1, arquivo); //escreve o resto do indice
             indice[i] = c; //salva o valor pra ficar no FS
         }
@@ -68,7 +68,7 @@ FS initFS() {
         for (i = sizeof(CLUSTER) + 1; i < TAM_CLUSTER; i++) { //inicializa o cluster root com vazio
             fwrite(&c, sizeof(char), 1, arquivo);
         }
-        for (i = 1; i < TAM_INDICE; i++) { //inicializa o resto dos clusters
+        for (i = 1; i < meta.tam_indice; i++) { //inicializa o resto dos clusters
             initCluster(arquivo);
         }
         //salva dados pra retornar
@@ -95,8 +95,8 @@ void saveFS(FS fileSystem) {
     int i;
     fseek(fileSystem.arquivo, 0, SEEK_SET); //vai pro inicio do arquivo
     fwrite(&(fileSystem.meta), sizeof(fileSystem.meta), 1, fileSystem.arquivo);
-    fwrite(fileSystem.indice, TAM_INDICE, 1, fileSystem.arquivo);
-    for (i = 0; i < TAM_INDICE; i++) {
+    fwrite(fileSystem.indice, fileSystem.meta.tam_indice, 1, fileSystem.arquivo);
+    for (i = 0; i < fileSystem.meta.tam_indice; i++) {
         fwrite(&(fileSystem.clusters[i]), sizeof(CLUSTER), 1, fileSystem.arquivo); //escreve meta do cluster
         fseek(fileSystem.arquivo, TAM_CLUSTER - sizeof(CLUSTER), SEEK_CUR); //pula pro próximo
     }
@@ -136,7 +136,7 @@ unsigned char getDirIndex(char* path, FS fileSystem) {
 
 //Leo: posiciona o ponteiro do arquivo no início da área de dados do cluster
 void setPointerToCluster(FS fileSystem, unsigned char indice) {
-    fseek(fileSystem.arquivo, sizeof(fileSystem.meta) + TAM_INDICE + indice*TAM_CLUSTER + sizeof(CLUSTER), SEEK_SET);
+    fseek(fileSystem.arquivo, sizeof(fileSystem.meta) + fileSystem.meta.tam_indice + indice*TAM_CLUSTER + sizeof(CLUSTER), SEEK_SET);
 }
 
 //Leo: troca FE por itemIndex, e escreve FE logo dps
@@ -165,7 +165,7 @@ void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) 
 //retorna o indice do primeiro cluster vazio na tabela
 unsigned char findNextOpenCluster(FS fileSystem) {
     int i = 0;
-    while(i<TAM_INDICE){
+    while(i<fileSystem.meta.tam_indice){
         if((unsigned char)fileSystem.indice[i] == VAZIO){
             return i;
         }

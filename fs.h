@@ -63,3 +63,4 @@ void move(char* srcPath, char* destPath, FS *fileSystem);
 
 void renameFile(char* path, char* name, FS* fileSystem);
 
+int disk(FS fileSystem, unsigned char dir);

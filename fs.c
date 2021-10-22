@@ -502,3 +502,36 @@ void renameFile(char* path, char* name, FS* fileSystem) {//Função renameFile. 
         }
     }
 }
+
+int disk(FS fileSystem, unsigned char dir){
+    unsigned char c = VAZIO;
+    unsigned char h = VAZIO;
+    int d,s;
+    d = 1;
+    long state;
+    unsigned char f = VAZIO;
+    unsigned char e = VAZIO;
+    setPointerToCluster(fileSystem, dir);
+    fread(&c, sizeof(char), 1, fileSystem.arquivo);
+    while(c != END_OF_FILE){
+        printf("%u\n", (unsigned int)c);
+        if((unsigned char)fileSystem.indice[c] != END_OF_FILE){
+            printf("%x",fileSystem.indice[c]);
+            h = c;
+            while(h!= END_OF_FILE){
+                h = fileSystem.indice[h];
+                d++;
+            }        
+        }else if(strcmp(fileSystem.clusters[c].tipo, "dir")==0){
+            state = ftell(fileSystem.arquivo);
+            d += disk(fileSystem, c);
+            fseek(fileSystem.arquivo, state, SEEK_SET);
+        }else{
+            d++;
+        }
+        //printf("%ld", ftell(fileSystem.arquivo));
+        printf("\n");
+        fread(&c, sizeof(char), 1, fileSystem.arquivo);
+    }
+    return d;
+}

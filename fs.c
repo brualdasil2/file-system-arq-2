@@ -1,7 +1,7 @@
 #include "fs.h"
 
 //Escreve 32kb de VAZIO no arquivo, o equivalente a um cluster inteiro não inizializado (sem nome), com um END_OF_FILE no início da área de dados
-void initCluster(FILE* arquivo) {
+void initCluster(FILE* arquivo, unsigned short tam_cluster) {
     int i;
     char c = '\0';
     for (i = 0; i < sizeof(CLUSTER); i++) { //metadados com 00
@@ -10,7 +10,7 @@ void initCluster(FILE* arquivo) {
     c = END_OF_FILE;
     fwrite(&c, sizeof(char), 1, arquivo); //END_OF_FILE pra marcar o início da área de dados
     c = VAZIO;
-    for (i = 0; i < TAM_CLUSTER - sizeof(CLUSTER) - 1; i++) { //área de dados com VAZIO
+    for (i = 0; i < tam_cluster - sizeof(CLUSTER) - 1; i++) { //área de dados com VAZIO
         fwrite(&c, sizeof(char), 1, arquivo);
     }
 }
@@ -40,7 +40,7 @@ FS initFS() {
         //percorre todos os clusters, lendo seus metadados
         for (i = 0; i < fileSystem.meta.tam_indice; i++) {
             fread(&(fileSystem.clusters[i]), sizeof(CLUSTER), 1, arquivo); //lê meta do cluster
-            fseek(arquivo, TAM_CLUSTER - sizeof(CLUSTER), SEEK_CUR); //pula pro próximo
+            fseek(arquivo, fileSystem.meta.tam_cluster - sizeof(CLUSTER), SEEK_CUR); //pula pro próximo
         }
         fileSystem.arquivo = arquivo;
     }
@@ -65,11 +65,11 @@ FS initFS() {
         c = END_OF_FILE;
         fwrite(&c, sizeof(char), 1, arquivo); //escreve end of file no inicio da area de dados do root
         c = VAZIO;
-        for (i = sizeof(CLUSTER) + 1; i < TAM_CLUSTER; i++) { //inicializa o cluster root com vazio
+        for (i = sizeof(CLUSTER) + 1; i < meta.tam_cluster; i++) { //inicializa o cluster root com vazio
             fwrite(&c, sizeof(char), 1, arquivo);
         }
         for (i = 1; i < meta.tam_indice; i++) { //inicializa o resto dos clusters
-            initCluster(arquivo);
+            initCluster(arquivo, meta.tam_cluster);
         }
         //salva dados pra retornar
         fileSystem.meta = meta;
@@ -98,7 +98,7 @@ void saveFS(FS fileSystem) {
     fwrite(fileSystem.indice, fileSystem.meta.tam_indice, 1, fileSystem.arquivo);
     for (i = 0; i < fileSystem.meta.tam_indice; i++) {
         fwrite(&(fileSystem.clusters[i]), sizeof(CLUSTER), 1, fileSystem.arquivo); //escreve meta do cluster
-        fseek(fileSystem.arquivo, TAM_CLUSTER - sizeof(CLUSTER), SEEK_CUR); //pula pro próximo
+        fseek(fileSystem.arquivo, fileSystem.meta.tam_cluster - sizeof(CLUSTER), SEEK_CUR); //pula pro próximo
     }
 }
 //Retorna o índice do diretorio a partir do caminho, e VAZIO caso o caminho seja inválido
@@ -136,7 +136,7 @@ unsigned char getDirIndex(char* path, FS fileSystem) {
 
 //Leo: posiciona o ponteiro do arquivo no início da área de dados do cluster
 void setPointerToCluster(FS fileSystem, unsigned char indice) {
-    fseek(fileSystem.arquivo, sizeof(fileSystem.meta) + fileSystem.meta.tam_indice + indice*TAM_CLUSTER + sizeof(CLUSTER), SEEK_SET);
+    fseek(fileSystem.arquivo, sizeof(fileSystem.meta) + fileSystem.meta.tam_indice + indice*fileSystem.meta.tam_cluster + sizeof(CLUSTER), SEEK_SET);
 }
 
 //Leo: troca FE por itemIndex, e escreve FE logo dps

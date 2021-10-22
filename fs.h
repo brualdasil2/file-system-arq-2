@@ -40,7 +40,6 @@ typedef struct {
     DIR_STATE dirState;
 } FS;
 
-void initCluster();
 
 FS initFS();
 

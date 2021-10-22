@@ -1,7 +1,7 @@
 #include "fs.h"
 
 //Escreve 32kb de VAZIO no arquivo, o equivalente a um cluster inteiro não inizializado (sem nome), com um END_OF_FILE no início da área de dados
-void initCluster(FILE* arquivo) {
+void initCluster(FILE* arquivo, unsigned short tam_cluster) {
     int i;
     char c = '\0';
     for (i = 0; i < sizeof(CLUSTER); i++) { //metadados com 00
@@ -10,7 +10,7 @@ void initCluster(FILE* arquivo) {
     c = END_OF_FILE;
     fwrite(&c, sizeof(char), 1, arquivo); //END_OF_FILE pra marcar o início da área de dados
     c = VAZIO;
-    for (i = 0; i < TAM_CLUSTER - sizeof(CLUSTER) - 1; i++) { //área de dados com VAZIO
+    for (i = 0; i < tam_cluster - sizeof(CLUSTER) - 1; i++) { //área de dados com VAZIO
         fwrite(&c, sizeof(char), 1, arquivo);
     }
 }
@@ -34,28 +34,28 @@ FS initFS() {
     if (arquivo = fileExists(NOME_ARQUIVO)) {
         //se o arquivo já existe, só lê os dados e salva no FS
         fread(&(fileSystem.meta), sizeof(fileSystem.meta), 1, arquivo); //lê metadados
-        fileSystem.indice = (char*)(malloc(sizeof(char)*TAM_INDICE)); //aloca espaço para o vetor de indices
-        fread(fileSystem.indice, TAM_INDICE, 1, arquivo); //lê índices
-        fileSystem.clusters = (CLUSTER*)(malloc(sizeof(CLUSTER)*TAM_INDICE)); //aloca espaço para o vetor de clusters
+        fileSystem.indice = (char*)(malloc(sizeof(char)*fileSystem.meta.tam_indice)); //aloca espaço para o vetor de indices
+        fread(fileSystem.indice, fileSystem.meta.tam_indice, 1, arquivo); //lê índices
+        fileSystem.clusters = (CLUSTER*)(malloc(sizeof(CLUSTER)*fileSystem.meta.tam_indice)); //aloca espaço para o vetor de clusters
         //percorre todos os clusters, lendo seus metadados
-        for (i = 0; i < TAM_INDICE; i++) {
+        for (i = 0; i < fileSystem.meta.tam_indice; i++) {
             fread(&(fileSystem.clusters[i]), sizeof(CLUSTER), 1, arquivo); //lê meta do cluster
-            fseek(arquivo, TAM_CLUSTER - sizeof(CLUSTER), SEEK_CUR); //pula pro próximo
+            fseek(arquivo, fileSystem.meta.tam_cluster - sizeof(CLUSTER), SEEK_CUR); //pula pro próximo
         }
         fileSystem.arquivo = arquivo;
     }
     else {
         //se o arquivo não existe, cria o arquivo e escreve os dados padrão
         META_PROGRAMA meta = {TAM_INDICE, TAM_CLUSTER, I_INDICE, I_ROOT};
-        char* indice = (char*)(malloc(sizeof(char)*TAM_INDICE)); //aloca espaço para o vetor de indices
-        CLUSTER* clusters = (CLUSTER*)(malloc(sizeof(CLUSTER)*TAM_INDICE)); //aloca espaço para o vetor de clusters
+        char* indice = (char*)(malloc(sizeof(char)*meta.tam_indice)); //aloca espaço para o vetor de indices
+        CLUSTER* clusters = (CLUSTER*)(malloc(sizeof(CLUSTER)*meta.tam_indice)); //aloca espaço para o vetor de clusters
         arquivo = fopen(NOME_ARQUIVO, "wb+");
         fwrite(&meta, sizeof(meta), 1, arquivo); //escreve metadados
         char c = END_OF_FILE;
         fwrite(&c, sizeof(char), 1, arquivo); //escreve o root no indice
         indice[0] = c; //salva o valor pra ficar no FS
         c = VAZIO;
-        for (i = 1; i < TAM_INDICE; i++) {
+        for (i = 1; i < meta.tam_indice; i++) {
             fwrite(&c, sizeof(char), 1, arquivo); //escreve o resto do indice
             indice[i] = c; //salva o valor pra ficar no FS
         }
@@ -65,11 +65,11 @@ FS initFS() {
         c = END_OF_FILE;
         fwrite(&c, sizeof(char), 1, arquivo); //escreve end of file no inicio da area de dados do root
         c = VAZIO;
-        for (i = sizeof(CLUSTER) + 1; i < TAM_CLUSTER; i++) { //inicializa o cluster root com vazio
+        for (i = sizeof(CLUSTER) + 1; i < meta.tam_cluster; i++) { //inicializa o cluster root com vazio
             fwrite(&c, sizeof(char), 1, arquivo);
         }
-        for (i = 1; i < TAM_INDICE; i++) { //inicializa o resto dos clusters
-            initCluster(arquivo);
+        for (i = 1; i < meta.tam_indice; i++) { //inicializa o resto dos clusters
+            initCluster(arquivo, meta.tam_cluster);
         }
         //salva dados pra retornar
         fileSystem.meta = meta;
@@ -95,15 +95,15 @@ void saveFS(FS fileSystem) {
     int i;
     fseek(fileSystem.arquivo, 0, SEEK_SET); //vai pro inicio do arquivo
     fwrite(&(fileSystem.meta), sizeof(fileSystem.meta), 1, fileSystem.arquivo);
-    fwrite(fileSystem.indice, TAM_INDICE, 1, fileSystem.arquivo);
-    for (i = 0; i < TAM_INDICE; i++) {
+    fwrite(fileSystem.indice, fileSystem.meta.tam_indice, 1, fileSystem.arquivo);
+    for (i = 0; i < fileSystem.meta.tam_indice; i++) {
         fwrite(&(fileSystem.clusters[i]), sizeof(CLUSTER), 1, fileSystem.arquivo); //escreve meta do cluster
-        fseek(fileSystem.arquivo, TAM_CLUSTER - sizeof(CLUSTER), SEEK_CUR); //pula pro próximo
+        fseek(fileSystem.arquivo, fileSystem.meta.tam_cluster - sizeof(CLUSTER), SEEK_CUR); //pula pro próximo
     }
 }
 //Retorna o índice do diretorio a partir do caminho, e VAZIO caso o caminho seja inválido
 unsigned char getDirIndex(char* path, FS fileSystem) {
-    char copiedPath[MAX_PATH]; //cópia da string (declarada localmente) pra funcionar no strtok
+    char copiedPath[MAX_PATHNAME_SIZE]; //cópia da string (declarada localmente) pra funcionar no strtok
     strcpy(copiedPath, path);  
     char *dirName = strtok(copiedPath, "/"); //armazena nome do diretório a ser encontrado
     if (strcmp(dirName, "root")) { //testa se o primeiro dir é o root
@@ -136,7 +136,7 @@ unsigned char getDirIndex(char* path, FS fileSystem) {
 
 //Leo: posiciona o ponteiro do arquivo no início da área de dados do cluster
 void setPointerToCluster(FS fileSystem, unsigned char indice) {
-    fseek(fileSystem.arquivo, sizeof(fileSystem.meta) + TAM_INDICE + indice*TAM_CLUSTER + sizeof(CLUSTER), SEEK_SET);
+    fseek(fileSystem.arquivo, sizeof(fileSystem.meta) + fileSystem.meta.tam_indice + indice*fileSystem.meta.tam_cluster + sizeof(CLUSTER), SEEK_SET);
 }
 
 //Leo: troca FE por itemIndex, e escreve FE logo dps
@@ -165,7 +165,8 @@ void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) 
 //retorna o indice do primeiro cluster vazio na tabela
 unsigned char findNextOpenCluster(FS fileSystem) {
     int i = 0;
-    while(i<TAM_INDICE-3){// -3 pra descondiderar os ultimos 3 clusters (corrompido, end_of_file e vazio)
+
+    while(i<fileSystem.meta.tam_indice-3){
         if((unsigned char)fileSystem.indice[i] == VAZIO){
             return i;
         }
@@ -206,6 +207,8 @@ void OverWriteAt(FS* fileSystem, char* text, unsigned char cIndex){//Função au
       fileSystem->indice[nextClusterIndex] = END_OF_FILE;//Define o próximo como END_OF_FILE.
       OverWriteAt(fileSystem,extra,nextClusterIndex);//Recursivamente, escreve no próximo cluster.
   }
+  free(temp);
+  free(extra);
 }
 
 //Arthur: Testa se o diretório está vazio.
@@ -234,7 +237,7 @@ unsigned char isInDir(unsigned char dirIndex, char* archiveName, char* archiveTy
 //Recebe um nome da forma "arquivo.txt" e armazena em duas strings "arquivo" e "txt". Retorna 1 em sucesso e 0 em erro
 unsigned char separateFileNameAndType(char* fullName, char** fileName, char** fileType) {
     int nameSize = strlen(fullName);
-    if (fullName[nameSize - 4] != '.') {
+    if (fullName[nameSize - EXTENSION_SIZE] != '.') {
         return 0;
     }
     else {
@@ -248,8 +251,8 @@ unsigned char separateFileNameAndType(char* fullName, char** fileName, char** fi
 void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned char* lowerArchiveIndex, FS fileSystem) {
     char* breakPoint;
     char* lowerArchiveName;
-    char lowerArchiveType[4] = "dir";
-    char upperPath[MAX_PATH];
+    char lowerArchiveType[EXTENSION_SIZE] = "dir";
+    char upperPath[MAX_FILENAME_SIZE];
 
     if(path == NULL) return;
 
@@ -485,8 +488,8 @@ void renameFile(char* path, char* name, FS* fileSystem) {//Função renameFile. 
             if(isInDir(originUpper, name, fileSystem->clusters[originLower].tipo, *fileSystem)==VAZIO){
                 strcpy(fileSystem->clusters[originLower].nome,name);//Executa a troca de nome.
                 if (originLower == fileSystem->dirState.workingDirIndex) {
-                    char upperPath[MAX_PATH];
-                    char filler[30];
+                    char upperPath[MAX_PATHNAME_SIZE];
+                    char filler[MAX_FILENAME_SIZE];
                     separatePaths(path, upperPath, filler);
                     strcat(upperPath, "/");
                     strcat(upperPath, name);

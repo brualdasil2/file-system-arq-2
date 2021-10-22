@@ -48,7 +48,8 @@ int main() {
         }
         else if(!strcmp("EXIT",cmd)) {
             fclose(fileSystem.arquivo);
-            //Arthur: Ponteiro retornado por malloc() é perdido dentro da chamada de initFS()
+            free(fileSystem.indice);
+            free(fileSystem.clusters);
             return 0;
         }
         else printf("Comando desconhecido.\n");

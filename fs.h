@@ -10,20 +10,23 @@
 #define TAM_INDICE 256
 #define I_INDICE 8
 #define I_ROOT 264
+
+#define MAX_PATHNAME_SIZE 256
+#define MAX_FILENAME_SIZE 20
+#define EXTENSION_SIZE 4
 #define MAX_CHAR TAM_CLUSTER - sizeof(CLUSTER) - 1
-#define MAX_PATH 256
 
 #define NOME_ARQUIVO "data.bin"
 
 
 typedef struct {
-    char workingDir[MAX_PATH];
+    char workingDir[MAX_PATHNAME_SIZE];
     unsigned char workingDirIndex;
 } DIR_STATE;
 
 typedef struct {
-    char nome[20];
-    char tipo[4];
+    char nome[MAX_FILENAME_SIZE];
+    char tipo[EXTENSION_SIZE];
 } CLUSTER;
 
 typedef struct {
@@ -41,7 +44,6 @@ typedef struct {
     DIR_STATE dirState;
 } FS;
 
-void initCluster();
 
 FS initFS();
 

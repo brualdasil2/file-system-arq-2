@@ -482,7 +482,7 @@ void renameFile(char* path, char* name, FS* fileSystem) {//Função renameFile. 
             if(isInDir(originUpper, name, fileSystem->clusters[originLower].tipo, *fileSystem)==VAZIO){
                 strcpy(fileSystem->clusters[originLower].nome,name);//Executa a troca de nome.
                 if (originLower == fileSystem->dirState.workingDirIndex) {
-                    char upperPath[200];
+                    char upperPath[MAX_PATH];
                     char filler[30];
                     separatePaths(path, upperPath, filler);
                     strcat(upperPath, "/");

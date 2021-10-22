@@ -43,7 +43,8 @@ int main() {
         }
         else if(!strcmp("EXIT",cmd)) {
             fclose(fileSystem.arquivo);
-            free(&fileSystem);
+            free(fileSystem.indice);
+            free(fileSystem.clusters);
             return 0;
         }
         else printf("Comando desconhecido.\n");

@@ -205,6 +205,8 @@ void OverWriteAt(FS* fileSystem, char* text, unsigned char cIndex){//Função au
       fileSystem->indice[nextClusterIndex] = END_OF_FILE;//Define o próximo como END_OF_FILE.
       OverWriteAt(fileSystem,extra,nextClusterIndex);//Recursivamente, escreve no próximo cluster.
   }
+  free(temp);
+  free(extra);
 }
 
 //Arthur: Testa se o diretório está vazio.

@@ -516,11 +516,27 @@ void renameFile(char* path, char* name, FS* fileSystem) {//Função renameFile. 
     }
 }
 
+//Testa se um índice está em um diretório
+int isIndexInDir(FS fileSystem, unsigned char index, unsigned char dirIndex) {
+    unsigned char c;
+    setPointerToCluster(fileSystem, dirIndex);
+    do {
+        fread(&c, sizeof(unsigned char), 1, fileSystem.arquivo);
+        if (index == c) {
+            return 1;
+        }
+    } while (c != END_OF_FILE);
+    return 0;
+}
+
+//retorna o índice do diretório pai do cluster. Caso não encontre (ex: cluster que seja parte de um arquivo multi-cluster), retorna CORROMPIDO
 unsigned char findParentDirIndex(FS fileSystem, unsigned char index) {
     int i;
+    //percorre a tabela de indices
     for (i = 0; i < fileSystem.meta.tam_indice - 3; i++) {
         if (!strcmp(fileSystem.clusters[i].tipo, "dir")) {
-            if (isInDir(i, fileSystem.clusters[index].nome, fileSystem.clusters[index].tipo, fileSystem)) {
+            //pra cada posição que é um dir, testa se esse indice está nele
+            if (isIndexInDir(fileSystem, index, i)) {
                 return i;
             }
         }
@@ -546,20 +562,27 @@ void moveCluster(FS* fileSystem, unsigned char srcIndex, unsigned char destIndex
 
     //encontra indice do dir que aponta pro indice antigo desse cluster
     unsigned char parentIndex = findParentDirIndex(*fileSystem, srcIndex);
-    printf("pIndex: %x\n", parentIndex);
-    //troca esse valor na área de dados do dir pai pelo indice novo
-    setPointerToCluster(*fileSystem, parentIndex);
-    unsigned char c;
-    do {
-        fread(&c, sizeof(unsigned char), 1, fileSystem->arquivo);
-    } while (c != srcIndex);
-    printf("found %x in parent dir %x\n", c, parentIndex);
-    fseek(fileSystem->arquivo, -1, SEEK_CUR);
-    fwrite(&destIndex, sizeof(unsigned char), 1, fileSystem->arquivo);
-    printf("wrote %x in parent dir\n", destIndex);
-    //se for um arquivo de texto...
-        //busca se algum outro arquivo de texto aponta pro indice antigo
-        //troca o valor do indice desse arquivo pelo indice novo
+    printf("parendIndex: %x\n", parentIndex);
+    if (parentIndex != CORROMPIDO) {
+        //troca esse valor na área de dados do dir pai pelo indice novo
+        setPointerToCluster(*fileSystem, parentIndex);
+        unsigned char c;
+        do {
+            fread(&c, sizeof(unsigned char), 1, fileSystem->arquivo);
+        } while (c != srcIndex);
+        fseek(fileSystem->arquivo, -1, SEEK_CUR);
+        fwrite(&destIndex, sizeof(unsigned char), 1, fileSystem->arquivo);
+    }
+    //se for um pedaço de arquivo grande...
+    else {
+        //busca qual outro arquivo de texto aponta pro indice antigo
+        for (int i = 0; i < fileSystem->meta.tam_indice - 3; i++) {
+            if (fileSystem->indice[i] == srcIndex) {
+                //troca o valor do indice desse arquivo pelo indice novo
+                fileSystem->indice[i] = destIndex;
+            }
+        }
+    }
 
     saveFS(*fileSystem);
 }

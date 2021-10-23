@@ -50,8 +50,7 @@ int main() {
             printf("Valor ocupado %d\n", disk(fileSystem, fileSystem.dirState.workingDirIndex));
         }
         else if(!strcmp("EXIT",cmd)) {
-            closeFS(fileSystem.arquivo, fileSystem.indice, fileSystem.clusters);
-            return 0;
+            return closeFS(fileSystem.arquivo, fileSystem.indice, fileSystem.clusters);          
         }
         else printf("Comando desconhecido.\n");
 

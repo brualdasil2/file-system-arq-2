@@ -562,7 +562,6 @@ void moveCluster(FS* fileSystem, unsigned char srcIndex, unsigned char destIndex
 
     //encontra indice do dir que aponta pro indice antigo desse cluster
     unsigned char parentIndex = findParentDirIndex(*fileSystem, srcIndex);
-    printf("parendIndex: %x\n", parentIndex);
     if (parentIndex != CORROMPIDO) {
         //troca esse valor na área de dados do dir pai pelo indice novo
         setPointerToCluster(*fileSystem, parentIndex);
@@ -593,7 +592,6 @@ void defrag(FS* fileSystem) {
     do {
         emptyIndex = findNextOpenCluster(*fileSystem);
         usedIndex = findLastUsedCluster(*fileSystem);
-        printf("emptyIndex: %x\tusedIndex: %x\n", emptyIndex, usedIndex);
         if (usedIndex > emptyIndex) {
             moveCluster(fileSystem, usedIndex, emptyIndex);
             counter++;

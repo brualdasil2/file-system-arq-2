@@ -46,6 +46,9 @@ int main() {
         else if(!strcmp("RENAME",cmd)) {
             renameFile(path, strtok(NULL,spc), &fileSystem);
         }
+        else if(!strcmp("DEFRAG",cmd)) {
+            defrag(&fileSystem);
+        }
         else if(!strcmp("EXIT",cmd)) {
             fclose(fileSystem.arquivo);
             free(fileSystem.indice);

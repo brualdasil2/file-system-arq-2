@@ -518,23 +518,24 @@ int disk(FS fileSystem, unsigned char dir){
     // le 1 item -> podem ser 4 casos: (1) arquivo > 1 cluster / (2) diretorio / (3)arquivo de 1 cluster / (4) fim do dir
     fread(&itemfromDir, sizeof(char), 1, fileSystem.arquivo);
     while(itemfromDir != END_OF_FILE){
-        if(itemfromDir != VAZIO)
-        // (1) -> percorre o indice ate achar o fim do arquivo (incrementando o tamanho do diretorio)
-        if((unsigned char)fileSystem.indice[itemfromDir] != END_OF_FILE){
-            unsigned char aux = itemfromDir;    // variavel auxiliar, para nao perder o valor do itemFromDir
-            while(aux!= END_OF_FILE && aux != VAZIO){
-                aux = fileSystem.indice[aux];
+        if(itemfromDir != VAZIO){// so executa o codigo abaixo se o item do dir nao for vazio
+            // (1) -> percorre o indice ate achar o fim do arquivo (incrementando o tamanho do diretorio)
+            if((unsigned char)fileSystem.indice[itemfromDir] != END_OF_FILE){
+                unsigned char aux = itemfromDir;    // variavel auxiliar, para nao perder o valor do itemFromDir
+                while(aux!= END_OF_FILE && aux != VAZIO){
+                    aux = fileSystem.indice[aux];
+                    dirSize++;
+            }
+            // (2) -> salva o estado do filePointer e chama essa funcao recursivamente para o diretorio       
+            }else if(strcmp(fileSystem.clusters[itemfromDir].tipo, "dir")==0){
+                long state = ftell(fileSystem.arquivo); // variavel que salve o estado do filePointer
+                dirSize += disk(fileSystem, itemfromDir);
+                fseek(fileSystem.arquivo, state, SEEK_SET);
+            }
+            // (3) -> somente incrementa o tamanho do diretorio
+            else{
                 dirSize++;
-        }
-        // (2) -> salva o estado do filePointer e chama essa funcao recursivamente para o diretorio       
-        }else if(strcmp(fileSystem.clusters[itemfromDir].tipo, "dir")==0){
-            long state = ftell(fileSystem.arquivo); // variavel que salve o estado do filePointer
-            dirSize += disk(fileSystem, itemfromDir);
-            fseek(fileSystem.arquivo, state, SEEK_SET);
-        }
-        // (3) -> somente incrementa o tamanho do diretorio
-        else{
-            dirSize++;
+            }
         }
         fread(&itemfromDir, sizeof(char), 1, fileSystem.arquivo);
     }

@@ -84,6 +84,13 @@ FS initFS() {
     return fileSystem;
 }
 
+int closeFS(FILE* fileP, char* indexPointer, CLUSTER* clustersP){ // Função closeFS. Realiza processo de encerramento. 
+    fclose(fileP);//Encerra o stream do arquivo.
+    free(indexPointer);//Libera os ponteiros.
+    free(clustersP);
+    return 0;
+}
+
 /*
 ==== FUNÇÕES UTILITÁRIAS ====
 */

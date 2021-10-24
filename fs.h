@@ -47,6 +47,8 @@ typedef struct {
 
 FS initFS();
 
+int closeFS(FILE* fileP, char* indexPointer, CLUSTER* clustersP);
+
 void cd(char* path, FS* fileSystem);
 
 void dir(FS fileSystem);

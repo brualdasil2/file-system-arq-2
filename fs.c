@@ -539,5 +539,5 @@ int disk(FS fileSystem, unsigned char dir){
         }
         fread(&itemfromDir, sizeof(char), 1, fileSystem.arquivo);
     }
-    return dirSize; // *32 porque a resposta eh em KB
+    return 32 * dirSize; // *32 porque a resposta eh em KB
 }

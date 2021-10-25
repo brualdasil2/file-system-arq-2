@@ -194,13 +194,13 @@ void OverWriteAt(FS* fileSystem, char* text, unsigned char cIndex){//Função au
       }
       *(temp+MAX_CHAR) = '\0';//Termina a escrita da string.
 
-      extra = (char*)malloc(sizeof(text)*sizeof(char));//Define a string extra.
+      extra = (char*)malloc(strlen(text)*sizeof(char));//Define a string extra.
 
       for(i=MAX_CHAR;i<strlen(text)+1;i++){//Salva o que restou da string em extra.
           *(extra+i-MAX_CHAR) = *(text+i);
       }
 
-      fwrite(temp, sizeof(temp), 1, fileSystem->arquivo);//Escreve o texto no cluster atual.
+      fwrite(temp, strlen(temp), 1, fileSystem->arquivo);//Escreve o texto no cluster atual.
 
       nextClusterIndex = findNextOpenCluster(*fileSystem);//Busca o índice do próximo cluster.
       fileSystem->indice[cIndex] = nextClusterIndex;//Redefine a tabela atual do cluster para o próximo cluster.

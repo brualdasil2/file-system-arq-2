@@ -49,11 +49,11 @@ int main() {
         else if(!strcmp("RF",cmd)) {
             rf(path, &fileSystem);
         }
+        else if(!strcmp("DISK",cmd)){
+            disk(fileSystem);
+        }
         else if(!strcmp("EXIT",cmd)) {
-            fclose(fileSystem.arquivo);
-            free(fileSystem.indice);
-            free(fileSystem.clusters);
-            return 0;
+            return closeFS(fileSystem.arquivo, fileSystem.indice, fileSystem.clusters);          
         }
         else printf("Comando desconhecido.\n");
 

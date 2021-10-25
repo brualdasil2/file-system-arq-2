@@ -509,7 +509,7 @@ void renameFile(char* path, char* name, FS* fileSystem) {//Função renameFile. 
     }
 }
 
-int disk(FS fileSystem, unsigned char dir){
+int getDirSize(FS fileSystem, unsigned char dir){
     unsigned char itemfromDir = VAZIO;  // item que sera inspecionado
     int dirSize = 1;                    // armazena o tamanho ( vale 1 porque o diretorio 1 quando vazio)
 
@@ -528,7 +528,7 @@ int disk(FS fileSystem, unsigned char dir){
             // (2) -> salva o estado do filePointer e chama essa funcao recursivamente para o diretorio       
             }else if(strcmp(fileSystem.clusters[itemfromDir].tipo, "dir")==0){
                 long state = ftell(fileSystem.arquivo); // variavel que salve o estado do filePointer
-                dirSize += disk(fileSystem, itemfromDir);
+                dirSize += getDirSize(fileSystem, itemfromDir);
                 fseek(fileSystem.arquivo, state, SEEK_SET);
             }
             // (3) -> somente incrementa o tamanho do diretorio
@@ -538,5 +538,10 @@ int disk(FS fileSystem, unsigned char dir){
         }
         fread(&itemfromDir, sizeof(char), 1, fileSystem.arquivo);
     }
-    return 32 * dirSize; // *32 porque a resposta eh em KB
+    return dirSize; 
+}
+
+void disk(FS fileSystem){
+    // Chama a funcao getDirSize e imprime o valor na tela
+    printf("Valor ocupado: %d Kb\n", 32 * getDirSize(fileSystem,fileSystem.dirState.workingDirIndex));
 }

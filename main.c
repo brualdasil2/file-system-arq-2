@@ -47,7 +47,7 @@ int main() {
             renameFile(path, strtok(NULL,spc), &fileSystem);
         }
         else if(!strcmp("DISK",cmd)){
-            printf("Valor ocupado %d\n", disk(fileSystem, fileSystem.dirState.workingDirIndex));
+            disk(fileSystem);
         }
         else if(!strcmp("EXIT",cmd)) {
             return closeFS(fileSystem.arquivo, fileSystem.indice, fileSystem.clusters);          

@@ -46,11 +46,11 @@ int main() {
         else if(!strcmp("RENAME",cmd)) {
             renameFile(path, strtok(NULL,spc), &fileSystem);
         }
+        else if(!strcmp("DISK",cmd)){
+            disk(fileSystem);
+        }
         else if(!strcmp("EXIT",cmd)) {
-            fclose(fileSystem.arquivo);
-            free(fileSystem.indice);
-            free(fileSystem.clusters);
-            return 0;
+            return closeFS(fileSystem.arquivo, fileSystem.indice, fileSystem.clusters);          
         }
         else printf("Comando desconhecido.\n");
 

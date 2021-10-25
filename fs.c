@@ -192,7 +192,7 @@ void OverWriteAt(FS* fileSystem, char* text, unsigned char cIndex){//Função au
   setPointerToCluster(*fileSystem,cIndex);//Aponta o sistema de escrita para o cluster do índice.
   temp = (char*)malloc(MAX_CHAR*sizeof(char));//Define a string temporária.
 
-  if(strlen(text) < MAX_CHAR){//Caso o texto seja menor que a maior quantidade de caracteres do cluster,   
+  if(strlen(text) < MAX_CHAR){//Caso o texto seja menor que a maior quantidade de caracteres do cluster,    
       fwrite(text, strlen(text)+1, 1, fileSystem->arquivo);//Escreve o texto no cluster.
   }else{//Se não, executa:
       for(i=0;i<MAX_CHAR;i++){//Salva a parte que será salva no cluster atual em temp.
@@ -212,9 +212,9 @@ void OverWriteAt(FS* fileSystem, char* text, unsigned char cIndex){//Função au
       fileSystem->indice[cIndex] = nextClusterIndex;//Redefine a tabela atual do cluster para o próximo cluster.
       fileSystem->indice[nextClusterIndex] = END_OF_FILE;//Define o próximo como END_OF_FILE.
       OverWriteAt(fileSystem,extra,nextClusterIndex);//Recursivamente, escreve no próximo cluster.
-      free(extra);
-  }
-  free(temp);  
+    }
+    free(temp);
+    free(extra);
 }
 
 //Arthur: Testa se o diretório está vazio.
@@ -438,14 +438,14 @@ void edit(char* path, char* text, FS* fileSystem) {//Função edit. Executa o co
     if(originLower == VAZIO){//Caso o arquivo não exista, executa:
         printf("Esse diretorio nao existe\n");
     }else{//Se não, caso normal:
-        if(strcmp(fileSystem->clusters[originLower].tipo,"txt")==0){            
+        if(strcmp(fileSystem->clusters[originLower].tipo,"txt")==0){
             OverWriteAt(fileSystem,text,originLower);//Executa função auxiliar de escrita.
-            saveFS(*fileSystem);//Salva o arquivo.            
+            saveFS(*fileSystem);//Salva o arquivo.
         }else{
             printf("Arquivo inválido para edição.\n");
         }        
     }
-} 
+}
 
 //Arthur: Move um arquivo para uma pasta designada
 void move(char* srcPath, char* destPath, FS* fileSystem) {

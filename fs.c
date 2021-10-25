@@ -509,6 +509,35 @@ void renameFile(char* path, char* name, FS* fileSystem) {//Função renameFile. 
     }
 }
 
+//Arthur: Remove um arquivo. Se for um diretório com algum conteúdo, remove em cascata
+void rf(char* path, FS* fileSystem) {
+    unsigned char c,upper,lower;
+    int i;
+    char pathBranch[MAX_PATHNAME_SIZE];
+    c = upper = lower = VAZIO;
+
+    getLastTwoIndex(path, &upper, &lower, *fileSystem);
+    //If executa se não for um diretório ou, caso contrário, testa se está vazio.
+    if(!(strcmp("dir",fileSystem->clusters[lower].tipo) == 0) || dirIsEmpty(lower, *fileSystem)) {
+        rm(path,fileSystem);
+    }
+    else { //Percorre cada arquivo dentro do diretório, chamando rf em cascata para cada um deles
+        for(i = 0; c!=END_OF_FILE || (i>=fileSystem->meta.tam_cluster); i++) {
+            setPointerToCluster(*fileSystem, lower);
+            fseek(fileSystem->arquivo, (long int)(i*sizeof(char)), SEEK_CUR);     
+            fread(&c, sizeof(unsigned char), 1, fileSystem->arquivo);
+            if (c!=VAZIO && c!=END_OF_FILE) {
+                sprintf(pathBranch,"%s/%s",path,fileSystem->clusters[c].nome);
+                if(!(strcmp("dir",fileSystem->clusters[c].tipo) == 0)) {
+                    sprintf(pathBranch,"%s.%s",pathBranch,fileSystem->clusters[c].tipo);
+                }
+                rf(pathBranch,fileSystem);
+            }
+        }
+        rm(path,fileSystem);
+    }
+}
+
 int getDirSize(FS fileSystem, unsigned char dir){
     unsigned char itemfromDir = VAZIO;  // item que sera inspecionado
     int dirSize = 1;                    // armazena o tamanho ( vale 1 porque o diretorio 1 quando vazio)

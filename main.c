@@ -46,6 +46,9 @@ int main() {
         else if(!strcmp("RENAME",cmd)) {
             renameFile(path, strtok(NULL,spc), &fileSystem);
         }
+        else if(!strcmp("RF",cmd)) {
+            rf(path, &fileSystem);
+        }
         else if(!strcmp("DISK",cmd)){
             disk(fileSystem);
         }
@@ -54,6 +57,6 @@ int main() {
         }
         else printf("Comando desconhecido.\n");
 
-        fclose(fileSystem.arquivo);   
+        fclose(fileSystem.arquivo);
     }
 }

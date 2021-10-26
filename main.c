@@ -48,15 +48,17 @@ int main() {
         }
         else if(!strcmp("DEFRAG",cmd)) {
             defrag(&fileSystem);
+        else if(!strcmp("RF",cmd)) {
+            rf(path, &fileSystem);
+        }
+        else if(!strcmp("DISK",cmd)){
+            disk(fileSystem);
         }
         else if(!strcmp("EXIT",cmd)) {
-            fclose(fileSystem.arquivo);
-            free(fileSystem.indice);
-            free(fileSystem.clusters);
-            return 0;
+            return closeFS(fileSystem.arquivo, fileSystem.indice, fileSystem.clusters);          
         }
         else printf("Comando desconhecido.\n");
 
-        fclose(fileSystem.arquivo);   
+        fclose(fileSystem.arquivo);
     }
 }

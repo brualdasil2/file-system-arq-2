@@ -6,6 +6,7 @@ int main() {
     FS fileSystem = initFS();
     const char spc[2] = " ";
     const char dQuotes[2] = "\"";
+    int i, quoteFinder;
     char input[210];
     char inputClone[210];
     char *cmd,*path,*editContent;
@@ -36,9 +37,20 @@ int main() {
             mkfile(path, &fileSystem);
         }
         else if(!strcmp("EDIT",cmd)) {
-            editContent = strtok(inputClone,dQuotes);
-            editContent = strtok(NULL,dQuotes);          
-            edit(path, editContent, &fileSystem);
+            quoteFinder = 0;
+            for(i=0;i < strlen(inputClone)+1;i++){                
+                if(inputClone[i]=='\"'){
+                    quoteFinder = 1;
+                }
+            }
+            if(quoteFinder){
+                editContent = strtok(inputClone,dQuotes);
+                editContent = strtok(NULL,dQuotes);         
+            }else{
+                editContent = strchr(inputClone,' ')+1;  
+                editContent = strchr(editContent,' ')+1;               
+            }     
+            edit(path, editContent, &fileSystem);         
         }
         else if(!strcmp("MOVE",cmd)) { 
             move(path, strtok(NULL,spc), &fileSystem);

@@ -11,7 +11,7 @@ int main() {
     char *cmd,*path,*editContent;
     fclose(fileSystem.arquivo);
     while (1) {
-        fileSystem.arquivo = fopen(NOME_ARQUIVO, "rb+"); //TIRAR DEPOIS!!!! TA SO PRA TESTE
+        fileSystem.arquivo = fopen(NOME_ARQUIVO, "rb+"); //Versão de debug, pra visualizar mudanças em tempo real
         printf("%s> ", fileSystem.dirState.workingDir);
         fgets(input, sizeof(input), stdin);
         input[strlen(input)-1] = '\0'; //Retira o '/n' do final
@@ -48,6 +48,7 @@ int main() {
         }
         else if(!strcmp("DEFRAG",cmd)) {
             defrag(&fileSystem);
+        }
         else if(!strcmp("RF",cmd)) {
             rf(path, &fileSystem);
         }
@@ -59,6 +60,6 @@ int main() {
         }
         else printf("Comando desconhecido.\n");
 
-        fclose(fileSystem.arquivo);
+        fclose(fileSystem.arquivo); //Versão de debug, pra visualizar mudanças em tempo real
     }
 }

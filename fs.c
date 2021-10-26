@@ -1,5 +1,26 @@
 #include "fs.h"
 
+/*
+=============== FUNÇÕES UTILITÁRIAS ===============
+*/
+
+//posiciona o ponteiro do arquivo no início da área de dados do cluster
+void setPointerToCluster(FS fileSystem, unsigned char indice) {
+    fseek(fileSystem.arquivo, sizeof(fileSystem.meta) + fileSystem.meta.tam_indice + indice*fileSystem.meta.tam_cluster + sizeof(CLUSTER), SEEK_SET);
+}
+
+//escreve todos os dados do FS no arquivo de memória
+void saveFS(FS fileSystem) {
+    int i;
+    fseek(fileSystem.arquivo, 0, SEEK_SET); //vai pro inicio do arquivo
+    fwrite(&(fileSystem.meta), sizeof(fileSystem.meta), 1, fileSystem.arquivo);
+    fwrite(fileSystem.indice, fileSystem.meta.tam_indice, 1, fileSystem.arquivo);
+    for (i = 0; i < fileSystem.meta.tam_indice; i++) {
+        fwrite(&(fileSystem.clusters[i]), sizeof(CLUSTER), 1, fileSystem.arquivo); //escreve meta do cluster
+        fseek(fileSystem.arquivo, fileSystem.meta.tam_cluster - sizeof(CLUSTER), SEEK_CUR); //pula pro próximo
+    }
+}
+
 //Escreve 32kb de VAZIO no arquivo, o equivalente a um cluster inteiro não inizializado (sem nome), com um END_OF_FILE no início da área de dados
 void initCluster(FILE* arquivo, unsigned short tam_cluster) {
     int i;
@@ -25,6 +46,363 @@ FILE* fileExists(char* filename) {
         return NULL;
     }
 }
+
+//Retorna o índice do diretorio a partir do caminho, e VAZIO caso o caminho seja inválido
+unsigned char getDirIndex(char* path, FS fileSystem) {
+    char copiedPath[MAX_PATHNAME_SIZE]; //cópia da string (declarada localmente) pra funcionar no strtok
+    strcpy(copiedPath, path);  
+    char *dirName = strtok(copiedPath, "/"); //armazena nome do diretório a ser encontrado
+    if (strcmp(dirName, "root")) { //testa se o primeiro dir é o root
+        return VAZIO;
+    }     
+    dirName = strtok(NULL, "/"); //pega o nome do primeiro subdiretório
+    unsigned char currDir = 0x00, c;    
+    int foundDir;
+    while (dirName) { //percorre cada subdiretório do caminho         
+        setPointerToCluster(fileSystem, currDir);
+        foundDir = 0;
+        while(!foundDir) { //percorre cada byte da área de dados do diretório atual
+            fread(&c, sizeof(unsigned char), 1, fileSystem.arquivo);
+            if (c != END_OF_FILE) {
+                if (!strcmp(dirName, fileSystem.clusters[c].nome)) { //verifica se é o nome do dir buscado, e se é do tipo dir
+                    if (!strcmp("dir", fileSystem.clusters[c].tipo)) {
+                        currDir = c;
+                        foundDir = 1;
+                    }
+                }
+            }
+            else {
+                return VAZIO; //se chegou ao fim e não encontrou, o caminho passado é inválido
+            }
+        }
+        dirName = strtok(NULL, "/"); //só chega aqui se encontrou o dir buscado, salva dir seguinte a buscar
+    }
+    return currDir;
+}
+
+//troca FE por itemIndex, e escreve FE logo dps
+void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) {
+    char item = CORROMPIDO;
+    char auxChar;
+    setPointerToCluster(fileSystem, dirIndex); // coloca o pointer no cluster
+    // acha o fim do diretorio
+    while((unsigned char)item != END_OF_FILE){
+        if ((unsigned char)item == VAZIO){
+            fseek(fileSystem.arquivo, (long int)(-1*sizeof(char)), SEEK_CUR);
+            auxChar = itemIndex;
+            fwrite(&auxChar, sizeof(char), 1, fileSystem.arquivo);
+            return;
+        }
+        fread(&item, sizeof(char), 1, fileSystem.arquivo);
+    }
+    //coloca mais um indice(dirIndex) e poe o FE
+    fseek(fileSystem.arquivo, (long int)(-1*sizeof(char)), SEEK_CUR);
+    auxChar = itemIndex;
+    fwrite(&auxChar, sizeof(char), 1, fileSystem.arquivo);
+    auxChar = END_OF_FILE;
+    fwrite(&auxChar, sizeof(char), 1, fileSystem.arquivo);
+}
+
+//retorna o indice do primeiro cluster vazio na tabela
+unsigned char findNextOpenCluster(FS fileSystem) {
+    int i = 0;
+
+    while(i<fileSystem.meta.tam_indice-3){
+        if((unsigned char)fileSystem.indice[i] == VAZIO){
+            return i;
+        }
+        i++;
+    }
+    // se esta cheio retorna corrompido
+    return CORROMPIDO;
+}
+
+//retorna o indice do ultimo cluster ocupado na tabela
+unsigned char findLastUsedCluster(FS fileSystem) {
+    unsigned short i = fileSystem.meta.tam_indice - 3 - 1;
+
+    while(i >= 0) {
+        if((unsigned char)fileSystem.indice[i] != VAZIO){
+            return i;
+        }
+        i--;
+    }
+    // se tudo incluindo root vazio retorna corrompido
+    return CORROMPIDO;
+}
+
+//Função auxiliar OverWriteAt. Recebe o fileSystem, o texto que será inserido, e o índice da tabela atual. Recursiva.
+void OverWriteAt(FS* fileSystem, char* text, unsigned char cIndex){
+  unsigned char nextClusterIndex;//Índice do próximo cluster.
+  char* temp;//String temporária.
+  char* extra;//String extra.
+  int i;//Variável para laços. 
+
+  setPointerToCluster(*fileSystem,cIndex);//Aponta o sistema de escrita para o cluster do índice.
+  temp = (char*)malloc(MAX_CHAR*sizeof(char));//Define a string temporária.
+
+  if(strlen(text) < MAX_CHAR){//Caso o texto seja menor que a maior quantidade de caracteres do cluster,    
+      fwrite(text, strlen(text)+1, 1, fileSystem->arquivo);//Escreve o texto no cluster.
+  }else{//Se não, executa:
+      for(i=0;i<MAX_CHAR;i++){//Salva a parte que será salva no cluster atual em temp.
+          *(temp+i) = *(text+i);
+      }
+      *(temp+MAX_CHAR) = '\0';//Termina a escrita da string.
+
+      extra = (char*)malloc(strlen(text)*sizeof(char));//Define a string extra.
+
+      for(i=MAX_CHAR;i<strlen(text)+1;i++){//Salva o que restou da string em extra.
+          *(extra+i-MAX_CHAR) = *(text+i);
+      }
+
+      fwrite(temp, strlen(temp)+1, 1, fileSystem->arquivo);//Escreve o texto no cluster atual.
+
+      nextClusterIndex = findNextOpenCluster(*fileSystem);//Busca o índice do próximo cluster.
+      fileSystem->indice[cIndex] = nextClusterIndex;//Redefine a tabela atual do cluster para o próximo cluster.
+      fileSystem->indice[nextClusterIndex] = END_OF_FILE;//Define o próximo como END_OF_FILE.
+      OverWriteAt(fileSystem,extra,nextClusterIndex);//Recursivamente, escreve no próximo cluster.
+      free(extra);
+    }
+    free(temp);    
+}
+
+//Testa se o diretório está vazio.
+int dirIsEmpty(unsigned char dirIndex, FS fileSystem) {
+    unsigned char c;
+    setPointerToCluster(fileSystem, dirIndex);
+    while(1) {
+        fread(&c, sizeof(unsigned char), 1, fileSystem.arquivo);
+        if (c == END_OF_FILE) return 1;
+        else if (c != VAZIO) return 0;
+    }
+}
+
+//Procura no diretório indicado um arquivo com nome e tipo específico.
+unsigned char isInDir(unsigned char dirIndex, char* archiveName, char* archiveType, FS fileSystem) {
+    unsigned char c = VAZIO;
+    setPointerToCluster(fileSystem, dirIndex);      
+    while(c!=END_OF_FILE) {                  
+        fread(&c, sizeof(unsigned char), 1, fileSystem.arquivo);        
+        if (!strcmp(archiveName, fileSystem.clusters[c].nome) && !strcmp(archiveType, fileSystem.clusters[c].tipo)) {
+            return c;
+        }           
+    }
+    return VAZIO;
+}
+
+//Separa o nome do arquivo do resto do caminho
+void separatePaths(char* fullPath, char* path, char* itemName){
+    int i, j, lastBarIndex;
+    i = j = lastBarIndex = 0;
+    while (fullPath[i] != '\0'){
+        if(fullPath[i]=='/'){
+            lastBarIndex = i;
+        }
+        i++;
+    }
+    i=0;
+    while(i<lastBarIndex){
+        path[i]=fullPath[i];
+        i++;
+    }
+    path[i] = '\0';
+    i++;
+    while(fullPath[i]!= '\0'){
+        itemName[j] = fullPath[i];
+        i++;
+        j++;
+    }
+    itemName[j] = '\0';
+}
+
+//Separa o nome do arquivo da extensão
+unsigned char separateFileNameAndType(char* fullName, char** fileName, char** fileType) {
+    int nameSize = strlen(fullName);
+    if (fullName[nameSize - EXTENSION_SIZE] != '.') {
+        return 0;
+    }
+    else {
+        *fileName = strtok(fullName, ".");
+        *fileType = strtok(NULL, ".");
+        return 1;
+    }
+}
+
+// se o nome tem uma barra retorna -1 (invalido), se nao tem retorna 1 (valido)
+int validateName(char* name){
+    if (strlen(name)>19) return-1;
+    for(int i=0 ; i<strlen(name) ; i++){
+        if (name[i] == '/'){
+            return -1;
+        }
+    }
+    return 1;
+}
+
+//Guarda o valor dos indíces do arquivo inferior(último no path) e arquivo superior(penúltimo no path), altera para VAZIO se inválido.
+void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned char* lowerArchiveIndex, FS fileSystem) {
+    char* breakPoint;
+    char* lowerArchiveName;
+    char lowerArchiveType[EXTENSION_SIZE] = "dir";
+    char upperPath[MAX_PATHNAME_SIZE];
+
+    if(path == NULL) return;
+
+    strcpy(upperPath,path);
+    breakPoint = strrchr(upperPath, '/');
+    if (breakPoint != NULL) {
+        breakPoint[0] = '\0';
+        lowerArchiveName = breakPoint + 1;
+
+        if (lowerArchiveName[strlen(lowerArchiveName) - 4] == '.') {
+            strcpy(lowerArchiveType, lowerArchiveName + strlen(lowerArchiveName) - 3);
+            lowerArchiveName[strlen(lowerArchiveName) - 4] = '\0';
+        }
+    }
+
+    if (upperPath[0] != '\0') //getDirIndex da crash se receber '\0'
+        *upperArchiveIndex = getDirIndex(upperPath, fileSystem);
+
+    *lowerArchiveIndex = (unsigned char)VAZIO;
+
+    if (breakPoint != NULL && upperPath[0] != '\0' && lowerArchiveName[0] != '\0')
+        *lowerArchiveIndex = isInDir(*upperArchiveIndex,lowerArchiveName, lowerArchiveType, fileSystem);
+}
+
+//função recursiva: retorna o tamanho do diretório e de seus sub-diretórios
+int getDirSize(FS fileSystem, unsigned char dir){
+    unsigned char itemfromDir = VAZIO;  // item que sera inspecionado
+    int dirSize = 1;                    // armazena o tamanho ( vale 1 porque o diretorio 1 quando vazio)
+
+    setPointerToCluster(fileSystem, dir);
+    // le 1 item -> podem ser 4 casos: (1) arquivo > 1 cluster / (2) diretorio / (3)arquivo de 1 cluster / (4) fim do dir
+    fread(&itemfromDir, sizeof(char), 1, fileSystem.arquivo);
+    while(itemfromDir != END_OF_FILE){
+        if(itemfromDir != VAZIO){// so executa o codigo abaixo se o item do dir nao for vazio
+            // (1) -> percorre o indice ate achar o fim do arquivo (incrementando o tamanho do diretorio)
+            if((unsigned char)fileSystem.indice[itemfromDir] != END_OF_FILE){
+                unsigned char aux = itemfromDir;    // variavel auxiliar, para nao perder o valor do itemFromDir
+                while(aux!= END_OF_FILE && aux != VAZIO){
+                    aux = fileSystem.indice[aux];
+                    dirSize++;
+            }
+            // (2) -> salva o estado do filePointer e chama essa funcao recursivamente para o diretorio       
+            }else if(strcmp(fileSystem.clusters[itemfromDir].tipo, "dir")==0){
+                long state = ftell(fileSystem.arquivo); // variavel que salve o estado do filePointer
+                dirSize += getDirSize(fileSystem, itemfromDir);
+                fseek(fileSystem.arquivo, state, SEEK_SET);
+            }
+            // (3) -> somente incrementa o tamanho do diretorio
+            else{
+                dirSize++;
+            }
+        }
+        fread(&itemfromDir, sizeof(char), 1, fileSystem.arquivo);
+    }
+    return dirSize; 
+}
+
+//Testa se um índice está em um diretório
+int isIndexInDir(FS fileSystem, unsigned char index, unsigned char dirIndex) {
+    unsigned char c;
+    setPointerToCluster(fileSystem, dirIndex);
+    do {
+        fread(&c, sizeof(unsigned char), 1, fileSystem.arquivo);
+        if (index == c) {
+            return 1;
+        }
+    } while (c != END_OF_FILE);
+    return 0;
+}
+
+//retorna o índice do diretório pai do cluster. Caso não encontre (ex: cluster que seja parte de um arquivo multi-cluster), retorna CORROMPIDO
+unsigned char findParentDirIndex(FS fileSystem, unsigned char index) {
+    int i;
+    //percorre a tabela de indices
+    for (i = 0; i < fileSystem.meta.tam_indice - 3; i++) {
+        if (!strcmp(fileSystem.clusters[i].tipo, "dir")) {
+            //pra cada posição que é um dir, testa se esse indice está nele
+            if (isIndexInDir(fileSystem, index, i)) {
+                return i;
+            }
+        }
+    }
+    return CORROMPIDO;
+}
+
+//move o conteúdo todo de um cluster para outra posição, sobrescrevendo o destino
+void moveCluster(FS* fileSystem, unsigned char srcIndex, unsigned char destIndex) {
+    //lê dados do cluster
+    char* clusterData = (char*)(malloc(fileSystem->meta.tam_cluster));
+    setPointerToCluster(*fileSystem, srcIndex);
+    fread(clusterData, fileSystem->meta.tam_cluster, 1, fileSystem->arquivo);
+    //escreve metadados do cluster na pos nova
+    strcpy(fileSystem->clusters[destIndex].nome, fileSystem->clusters[srcIndex].nome);
+    strcpy(fileSystem->clusters[destIndex].tipo, fileSystem->clusters[srcIndex].tipo);
+    //escreve dados do cluster na pos nova
+    setPointerToCluster(*fileSystem, destIndex);
+    fwrite(clusterData, fileSystem->meta.tam_cluster, 1, fileSystem->arquivo);
+    //escreve o valor do indice na pos nova da tabela
+    fileSystem->indice[destIndex] = fileSystem->indice[srcIndex];
+    //escreve VAZIO na pos antiga da tabela
+    fileSystem->indice[srcIndex] = VAZIO;
+
+    //encontra indice do dir que aponta pro indice antigo desse cluster
+    unsigned char parentIndex = findParentDirIndex(*fileSystem, srcIndex);
+    if (parentIndex != CORROMPIDO) {
+        //troca esse valor na área de dados do dir pai pelo indice novo
+        setPointerToCluster(*fileSystem, parentIndex);
+        unsigned char c;
+        do {
+            fread(&c, sizeof(unsigned char), 1, fileSystem->arquivo);
+        } while (c != srcIndex);
+        fseek(fileSystem->arquivo, -1, SEEK_CUR);
+        fwrite(&destIndex, sizeof(unsigned char), 1, fileSystem->arquivo);
+    }
+    //se for um pedaço de arquivo grande...
+    else {
+        //busca qual outro arquivo de texto aponta pro indice antigo
+        for (int i = 0; i < fileSystem->meta.tam_indice - 3; i++) {
+            if (fileSystem->indice[i] == srcIndex) {
+                //troca o valor do indice desse arquivo pelo indice novo
+                fileSystem->indice[i] = destIndex;
+            }
+        }
+    }
+
+    saveFS(*fileSystem);
+}
+
+//cria um arquivo ou diretório
+void make(char* name, char* type, FS* fileSystem) {
+    // Consistencia -> Nome valido? Arquivo ja existe ? Armazenamento está cheio ?
+    if (validateName(name) == -1 ){
+        printf("Nome invalido!\n");
+        return;
+    }
+    if( isInDir(fileSystem->dirState.workingDirIndex, name, type, *fileSystem) != VAZIO){
+        printf("Arquivo ou diretorio ja existe\n");
+        return;
+    }
+    unsigned char clusterIndex = findNextOpenCluster(*fileSystem);
+    if (clusterIndex == CORROMPIDO){
+        printf("Seu Armazenamento está cheio!\n");
+        return;
+    }
+
+    // Altera o indice
+    fileSystem->indice[clusterIndex] = END_OF_FILE;
+    // Altera o diretorio
+    appendItem(*fileSystem, fileSystem->dirState.workingDirIndex, clusterIndex);
+    // Salva o FS
+    strcpy(fileSystem->clusters[clusterIndex].nome, name);
+    strcpy(fileSystem->clusters[clusterIndex].tipo, type);
+    saveFS(*fileSystem);
+}
+
+/*
+=============== FUNÇÕES DE COMANDOS ===============
+*/
 
 //Inicializa o arquivo e as estruturas do FS
 FS initFS() {
@@ -79,11 +457,12 @@ FS initFS() {
     }
     //setta estado do diretório atual
     fileSystem.dirState.workingDirIndex = 0;
-    strcpy(fileSystem.dirState.workingDir, "root");
+    strcpy(fileSystem.dirState.workingDir, "/root");
     
     return fileSystem;
 }
 
+//Finaliza o sistema de arquivos
 int closeFS(FILE* fileP, char* indexPointer, CLUSTER* clustersP){ // Função closeFS. Realiza processo de encerramento. 
     fclose(fileP);//Encerra o stream do arquivo.
     free(indexPointer);//Libera os ponteiros.
@@ -91,213 +470,6 @@ int closeFS(FILE* fileP, char* indexPointer, CLUSTER* clustersP){ // Função cl
     return 0;
 }
 
-/*
-==== FUNÇÕES UTILITÁRIAS ====
-*/
-
-void setPointerToCluster(FS fileSystem, unsigned char indice); //declaração pra poder usar
-
-//escreve todos os dados do FS no arquivo de memória
-void saveFS(FS fileSystem) {
-    int i;
-    fseek(fileSystem.arquivo, 0, SEEK_SET); //vai pro inicio do arquivo
-    fwrite(&(fileSystem.meta), sizeof(fileSystem.meta), 1, fileSystem.arquivo);
-    fwrite(fileSystem.indice, fileSystem.meta.tam_indice, 1, fileSystem.arquivo);
-    for (i = 0; i < fileSystem.meta.tam_indice; i++) {
-        fwrite(&(fileSystem.clusters[i]), sizeof(CLUSTER), 1, fileSystem.arquivo); //escreve meta do cluster
-        fseek(fileSystem.arquivo, fileSystem.meta.tam_cluster - sizeof(CLUSTER), SEEK_CUR); //pula pro próximo
-    }
-}
-//Retorna o índice do diretorio a partir do caminho, e VAZIO caso o caminho seja inválido
-unsigned char getDirIndex(char* path, FS fileSystem) {
-    char copiedPath[MAX_PATHNAME_SIZE]; //cópia da string (declarada localmente) pra funcionar no strtok
-    strcpy(copiedPath, path);  
-    char *dirName = strtok(copiedPath, "/"); //armazena nome do diretório a ser encontrado
-    if (strcmp(dirName, "root")) { //testa se o primeiro dir é o root
-        return VAZIO;
-    }     
-    dirName = strtok(NULL, "/"); //pega o nome do primeiro subdiretório
-    unsigned char currDir = 0x00, c;    
-    int foundDir;
-    while (dirName) { //percorre cada subdiretório do caminho         
-        setPointerToCluster(fileSystem, currDir);
-        foundDir = 0;
-        while(!foundDir) { //percorre cada byte da área de dados do diretório atual
-            fread(&c, sizeof(unsigned char), 1, fileSystem.arquivo);
-            if (c != END_OF_FILE) {
-                if (!strcmp(dirName, fileSystem.clusters[c].nome)) { //verifica se é o nome do dir buscado, e se é do tipo dir
-                    if (!strcmp("dir", fileSystem.clusters[c].tipo)) {
-                        currDir = c;
-                        foundDir = 1;
-                    }
-                }
-            }
-            else {
-                return VAZIO; //se chegou ao fim e não encontrou, o caminho passado é inválido
-            }
-        }
-        dirName = strtok(NULL, "/"); //só chega aqui se encontrou o dir buscado, salva dir seguinte a buscar
-    }
-    return currDir;
-}
-
-//Leo: posiciona o ponteiro do arquivo no início da área de dados do cluster
-void setPointerToCluster(FS fileSystem, unsigned char indice) {
-    fseek(fileSystem.arquivo, sizeof(fileSystem.meta) + fileSystem.meta.tam_indice + indice*fileSystem.meta.tam_cluster + sizeof(CLUSTER), SEEK_SET);
-}
-
-//Leo: troca FE por itemIndex, e escreve FE logo dps
-void appendItem(FS fileSystem, unsigned char dirIndex, unsigned char itemIndex) {
-    char item = CORROMPIDO;
-    char auxChar;
-    setPointerToCluster(fileSystem, dirIndex); // coloca o pointer no cluster
-    // acha o fim do diretorio
-    while((unsigned char)item != END_OF_FILE){
-        if ((unsigned char)item == VAZIO){
-            fseek(fileSystem.arquivo, (long int)(-1*sizeof(char)), SEEK_CUR);
-            auxChar = itemIndex;
-            fwrite(&auxChar, sizeof(char), 1, fileSystem.arquivo);
-            return;
-        }
-        fread(&item, sizeof(char), 1, fileSystem.arquivo);
-    }
-    //coloca mais um indice(dirIndex) e poe o FE
-    fseek(fileSystem.arquivo, (long int)(-1*sizeof(char)), SEEK_CUR);
-    auxChar = itemIndex;
-    fwrite(&auxChar, sizeof(char), 1, fileSystem.arquivo);
-    auxChar = END_OF_FILE;
-    fwrite(&auxChar, sizeof(char), 1, fileSystem.arquivo);
-}
-
-//retorna o indice do primeiro cluster vazio na tabela
-unsigned char findNextOpenCluster(FS fileSystem) {
-    int i = 0;
-
-    while(i<fileSystem.meta.tam_indice-3){
-        if((unsigned char)fileSystem.indice[i] == VAZIO){
-            return i;
-        }
-        i++;
-    }
-    // se esta cheio retorna corrompido
-    return CORROMPIDO;
-}
-//retorna o indice do ultimo cluster ocupado na tabela
-unsigned char findLastUsedCluster(FS fileSystem) {
-    unsigned short i = fileSystem.meta.tam_indice - 3 - 1;
-
-    while(i >= 0) {
-        if((unsigned char)fileSystem.indice[i] != VAZIO){
-            return i;
-        }
-        i--;
-    }
-    // se tudo incluindo root vazio retorna corrompido
-    return CORROMPIDO;
-}
-
-void OverWriteAt(FS* fileSystem, char* text, unsigned char cIndex){//Função auxiliar OverWriteAt. Recebe o fileSystem, o texto que será inserido, e o índice da tabela atual. Recursiva.
-  unsigned char nextClusterIndex;//Índice do próximo cluster.
-  char* temp;//String temporária.
-  char* extra;//String extra.
-  int i;//Variável para laços. 
-
-  setPointerToCluster(*fileSystem,cIndex);//Aponta o sistema de escrita para o cluster do índice.
-  temp = (char*)malloc(MAX_CHAR*sizeof(char));//Define a string temporária.
-
-  if(strlen(text) < MAX_CHAR){//Caso o texto seja menor que a maior quantidade de caracteres do cluster,    
-      fwrite(text, strlen(text)+1, 1, fileSystem->arquivo);//Escreve o texto no cluster.
-  }else{//Se não, executa:
-      for(i=0;i<MAX_CHAR;i++){//Salva a parte que será salva no cluster atual em temp.
-          *(temp+i) = *(text+i);
-      }
-      *(temp+MAX_CHAR) = '\0';//Termina a escrita da string.
-
-      extra = (char*)malloc(strlen(text)*sizeof(char));//Define a string extra.
-
-      for(i=MAX_CHAR;i<strlen(text)+1;i++){//Salva o que restou da string em extra.
-          *(extra+i-MAX_CHAR) = *(text+i);
-      }
-
-      fwrite(temp, strlen(temp)+1, 1, fileSystem->arquivo);//Escreve o texto no cluster atual.
-
-      nextClusterIndex = findNextOpenCluster(*fileSystem);//Busca o índice do próximo cluster.
-      fileSystem->indice[cIndex] = nextClusterIndex;//Redefine a tabela atual do cluster para o próximo cluster.
-      fileSystem->indice[nextClusterIndex] = END_OF_FILE;//Define o próximo como END_OF_FILE.
-      OverWriteAt(fileSystem,extra,nextClusterIndex);//Recursivamente, escreve no próximo cluster.
-      free(extra);
-    }
-    free(temp);    
-}
-
-//Arthur: Testa se o diretório está vazio.
-int dirIsEmpty(unsigned char dirIndex, FS fileSystem) {
-    unsigned char c;
-    setPointerToCluster(fileSystem, dirIndex);
-    while(1) {
-        fread(&c, sizeof(unsigned char), 1, fileSystem.arquivo);
-        if (c == END_OF_FILE) return 1;
-        else if (c != VAZIO) return 0;
-    }
-}
-//Arthur: Procura no diretório indicado um arquivo com nome e tipo específico.
-unsigned char isInDir(unsigned char dirIndex, char* archiveName, char* archiveType, FS fileSystem) {
-    unsigned char c = VAZIO;
-    setPointerToCluster(fileSystem, dirIndex);      
-    while(c!=END_OF_FILE) {                  
-        fread(&c, sizeof(unsigned char), 1, fileSystem.arquivo);        
-        if (!strcmp(archiveName, fileSystem.clusters[c].nome) && !strcmp(archiveType, fileSystem.clusters[c].tipo)) {
-            return c;
-        }           
-    }
-    return VAZIO;
-}
-
-//Recebe um nome da forma "arquivo.txt" e armazena em duas strings "arquivo" e "txt". Retorna 1 em sucesso e 0 em erro
-unsigned char separateFileNameAndType(char* fullName, char** fileName, char** fileType) {
-    int nameSize = strlen(fullName);
-    if (fullName[nameSize - EXTENSION_SIZE] != '.') {
-        return 0;
-    }
-    else {
-        *fileName = strtok(fullName, ".");
-        *fileType = strtok(NULL, ".");
-        return 1;
-    }
-}
-
-//Arthur: Guarda o valor dos indíces do arquivo inferior(último no path) e arquivo superior(penúltimo no path), altera para VAZIO se inválido.
-void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned char* lowerArchiveIndex, FS fileSystem) {
-    char* breakPoint;
-    char* lowerArchiveName;
-    char lowerArchiveType[EXTENSION_SIZE] = "dir";
-    char upperPath[MAX_PATHNAME_SIZE];
-
-    if(path == NULL) return;
-
-    strcpy(upperPath,path);
-    breakPoint = strrchr(upperPath, '/');
-    if (breakPoint != NULL) {
-        breakPoint[0] = '\0';
-        lowerArchiveName = breakPoint + 1;
-
-        if (lowerArchiveName[strlen(lowerArchiveName) - 4] == '.') {
-            strcpy(lowerArchiveType, lowerArchiveName + strlen(lowerArchiveName) - 3);
-            lowerArchiveName[strlen(lowerArchiveName) - 4] = '\0';
-        }
-    }
-
-    if (upperPath[0] != '\0') //getDirIndex da crash se receber '\0'
-        *upperArchiveIndex = getDirIndex(upperPath, fileSystem);
-
-    *lowerArchiveIndex = (unsigned char)VAZIO;
-
-    if (breakPoint != NULL && upperPath[0] != '\0' && lowerArchiveName[0] != '\0')
-        *lowerArchiveIndex = isInDir(*upperArchiveIndex,lowerArchiveName, lowerArchiveType, fileSystem);
-}
-/*
-==== FUNÇÕES DE COMANDOS ====
-*/
 //Altera o diretório atual a partir do caminho, se ele existir
 void cd(char* path, FS* fileSystem) {
     unsigned char currDir = getDirIndex(path, *fileSystem);
@@ -337,7 +509,7 @@ void dir(FS fileSystem) {
     }
 }
 
-//Arthur: Faz a remoção de um arquivo.
+//Faz a remoção de um arquivo.
 void rm(char* path, FS* fileSystem) {
     unsigned char upper,lower;
     upper = lower = VAZIO;
@@ -362,73 +534,12 @@ void rm(char* path, FS* fileSystem) {
     else printf("Caminho Invalido.\n");
 }
 
-//Leo
-void separatePaths(char* fullPath, char* path, char* itemName){
-    int i, j, lastBarIndex;
-    i = j = lastBarIndex = 0;
-    while (fullPath[i] != '\0'){
-        if(fullPath[i]=='/'){
-            lastBarIndex = i;
-        }
-        i++;
-    }
-    i=0;
-    while(i<lastBarIndex){
-        path[i]=fullPath[i];
-        i++;
-    }
-    path[i] = '\0';
-    i++;
-    while(fullPath[i]!= '\0'){
-        itemName[j] = fullPath[i];
-        i++;
-        j++;
-    }
-    itemName[j] = '\0';
-}
-
-// se o nome tem uma barra retorna -1 (invalido), se nao tem retorna 1 (valido)
-int validateName(char* name){
-    if (strlen(name)>19) return-1;
-    for(int i=0 ; i<strlen(name) ; i++){
-        if (name[i] == '/'){
-            return -1;
-        }
-    }
-    return 1;
-}
-
-//Leo
-void make(char* name, char* type, FS* fileSystem) {
-    // Consistencia -> Nome valido? Arquivo ja existe ? Armazenamento está cheio ?
-    if (validateName(name) == -1 ){
-        printf("Nome invalido!\n");
-        return;
-    }
-    if( isInDir(fileSystem->dirState.workingDirIndex, name, type, *fileSystem) != VAZIO){
-        printf("Arquivo ou diretorio ja existe\n");
-        return;
-    }
-    unsigned char clusterIndex = findNextOpenCluster(*fileSystem);
-    if (clusterIndex == CORROMPIDO){
-        printf("Seu Armazenamento está cheio!\n");
-        return;
-    }
-
-    // Altera o indice
-    fileSystem->indice[clusterIndex] = END_OF_FILE;
-    // Altera o diretorio
-    appendItem(*fileSystem, fileSystem->dirState.workingDirIndex, clusterIndex);
-    // Salva o FS
-    strcpy(fileSystem->clusters[clusterIndex].nome, name);
-    strcpy(fileSystem->clusters[clusterIndex].tipo, type);
-    saveFS(*fileSystem);
-}
-
+//Cria um dir no dir atual
 void mkdir(char* name, FS* fileSystem) {
     make(name, "dir", fileSystem);
 }
 
+//Cria um arquivo no dir atual
 void mkfile(char* name, FS* fileSystem) {
     char* path;
     char* fileType;
@@ -440,9 +551,7 @@ void mkfile(char* name, FS* fileSystem) {
     }
 }
 
-
-
-//Tiago
+//Escreve conteúdo de texto nos dados de um arquivo
 void edit(char* path, char* text, FS* fileSystem) {//Função edit. Executa o comando EDIT. Recebe o caminho do arquivo, o texto para inserir, fileSystem.
     unsigned char originUpper, originLower;
 
@@ -460,7 +569,7 @@ void edit(char* path, char* text, FS* fileSystem) {//Função edit. Executa o co
     }
 }
 
-//Arthur: Move um arquivo para uma pasta designada
+//Move um arquivo para uma pasta designada
 void move(char* srcPath, char* destPath, FS* fileSystem) {
     unsigned char originUpper, originLower, destLower;
     originUpper = originLower = destLower = VAZIO;
@@ -485,8 +594,7 @@ void move(char* srcPath, char* destPath, FS* fileSystem) {
     else printf("Caminhos Invalidos.\n");
 }
 
-
-//Tiago
+//Renomeia um arquivo
 void renameFile(char* path, char* name, FS* fileSystem) {//Função renameFile. Executa o comando RENAME. Recebe o caminho do arquivo, o nome novo e o fileSystem.
     unsigned char originUpper, originLower;
     int i;
@@ -522,76 +630,7 @@ void renameFile(char* path, char* name, FS* fileSystem) {//Função renameFile. 
     }
 }
 
-//Testa se um índice está em um diretório
-int isIndexInDir(FS fileSystem, unsigned char index, unsigned char dirIndex) {
-    unsigned char c;
-    setPointerToCluster(fileSystem, dirIndex);
-    do {
-        fread(&c, sizeof(unsigned char), 1, fileSystem.arquivo);
-        if (index == c) {
-            return 1;
-        }
-    } while (c != END_OF_FILE);
-    return 0;
-}
-
-//retorna o índice do diretório pai do cluster. Caso não encontre (ex: cluster que seja parte de um arquivo multi-cluster), retorna CORROMPIDO
-unsigned char findParentDirIndex(FS fileSystem, unsigned char index) {
-    int i;
-    //percorre a tabela de indices
-    for (i = 0; i < fileSystem.meta.tam_indice - 3; i++) {
-        if (!strcmp(fileSystem.clusters[i].tipo, "dir")) {
-            //pra cada posição que é um dir, testa se esse indice está nele
-            if (isIndexInDir(fileSystem, index, i)) {
-                return i;
-            }
-        }
-    }
-    return CORROMPIDO;
-}
-
-void moveCluster(FS* fileSystem, unsigned char srcIndex, unsigned char destIndex) {
-    //lê dados do cluster
-    char* clusterData = (char*)(malloc(fileSystem->meta.tam_cluster));
-    setPointerToCluster(*fileSystem, srcIndex);
-    fread(clusterData, fileSystem->meta.tam_cluster, 1, fileSystem->arquivo);
-    //escreve metadados do cluster na pos nova
-    strcpy(fileSystem->clusters[destIndex].nome, fileSystem->clusters[srcIndex].nome);
-    strcpy(fileSystem->clusters[destIndex].tipo, fileSystem->clusters[srcIndex].tipo);
-    //escreve dados do cluster na pos nova
-    setPointerToCluster(*fileSystem, destIndex);
-    fwrite(clusterData, fileSystem->meta.tam_cluster, 1, fileSystem->arquivo);
-    //escreve o valor do indice na pos nova da tabela
-    fileSystem->indice[destIndex] = fileSystem->indice[srcIndex];
-    //escreve VAZIO na pos antiga da tabela
-    fileSystem->indice[srcIndex] = VAZIO;
-
-    //encontra indice do dir que aponta pro indice antigo desse cluster
-    unsigned char parentIndex = findParentDirIndex(*fileSystem, srcIndex);
-    if (parentIndex != CORROMPIDO) {
-        //troca esse valor na área de dados do dir pai pelo indice novo
-        setPointerToCluster(*fileSystem, parentIndex);
-        unsigned char c;
-        do {
-            fread(&c, sizeof(unsigned char), 1, fileSystem->arquivo);
-        } while (c != srcIndex);
-        fseek(fileSystem->arquivo, -1, SEEK_CUR);
-        fwrite(&destIndex, sizeof(unsigned char), 1, fileSystem->arquivo);
-    }
-    //se for um pedaço de arquivo grande...
-    else {
-        //busca qual outro arquivo de texto aponta pro indice antigo
-        for (int i = 0; i < fileSystem->meta.tam_indice - 3; i++) {
-            if (fileSystem->indice[i] == srcIndex) {
-                //troca o valor do indice desse arquivo pelo indice novo
-                fileSystem->indice[i] = destIndex;
-            }
-        }
-    }
-
-    saveFS(*fileSystem);
-}
-
+//Desfragmenta o disco, movendo todos os cluster para o início da área de dados
 void defrag(FS* fileSystem) {
     unsigned char emptyIndex, usedIndex;
     int counter = 0;
@@ -604,8 +643,9 @@ void defrag(FS* fileSystem) {
         }
     } while (usedIndex > emptyIndex);
     printf("Desfragmentação completa. Movidos %d arquivos\n", counter);
+}
     
-//Arthur: Remove um arquivo. Se for um diretório com algum conteúdo, remove em cascata
+//Remove um arquivo. Se for um diretório com algum conteúdo, remove em cascata
 void rf(char* path, FS* fileSystem) {
     unsigned char c,upper,lower;
     int i;
@@ -634,38 +674,7 @@ void rf(char* path, FS* fileSystem) {
     }
 }
 
-int getDirSize(FS fileSystem, unsigned char dir){
-    unsigned char itemfromDir = VAZIO;  // item que sera inspecionado
-    int dirSize = 1;                    // armazena o tamanho ( vale 1 porque o diretorio 1 quando vazio)
-
-    setPointerToCluster(fileSystem, dir);
-    // le 1 item -> podem ser 4 casos: (1) arquivo > 1 cluster / (2) diretorio / (3)arquivo de 1 cluster / (4) fim do dir
-    fread(&itemfromDir, sizeof(char), 1, fileSystem.arquivo);
-    while(itemfromDir != END_OF_FILE){
-        if(itemfromDir != VAZIO){// so executa o codigo abaixo se o item do dir nao for vazio
-            // (1) -> percorre o indice ate achar o fim do arquivo (incrementando o tamanho do diretorio)
-            if((unsigned char)fileSystem.indice[itemfromDir] != END_OF_FILE){
-                unsigned char aux = itemfromDir;    // variavel auxiliar, para nao perder o valor do itemFromDir
-                while(aux!= END_OF_FILE && aux != VAZIO){
-                    aux = fileSystem.indice[aux];
-                    dirSize++;
-            }
-            // (2) -> salva o estado do filePointer e chama essa funcao recursivamente para o diretorio       
-            }else if(strcmp(fileSystem.clusters[itemfromDir].tipo, "dir")==0){
-                long state = ftell(fileSystem.arquivo); // variavel que salve o estado do filePointer
-                dirSize += getDirSize(fileSystem, itemfromDir);
-                fseek(fileSystem.arquivo, state, SEEK_SET);
-            }
-            // (3) -> somente incrementa o tamanho do diretorio
-            else{
-                dirSize++;
-            }
-        }
-        fread(&itemfromDir, sizeof(char), 1, fileSystem.arquivo);
-    }
-    return dirSize; 
-}
-
+//Exibe o tamanho em kb ocupado pelo dir atual
 void disk(FS fileSystem){
     // Chama a funcao getDirSize e imprime o valor na tela
     printf("Valor ocupado: %d Kb\n", 32 * getDirSize(fileSystem,fileSystem.dirState.workingDirIndex));

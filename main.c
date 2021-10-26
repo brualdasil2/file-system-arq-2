@@ -46,6 +46,8 @@ int main() {
         else if(!strcmp("RENAME",cmd)) {
             renameFile(path, strtok(NULL,spc), &fileSystem);
         }
+        else if(!strcmp("DEFRAG",cmd)) {
+            defrag(&fileSystem);
         else if(!strcmp("RF",cmd)) {
             rf(path, &fileSystem);
         }

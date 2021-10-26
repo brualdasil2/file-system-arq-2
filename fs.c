@@ -182,6 +182,19 @@ unsigned char findNextOpenCluster(FS fileSystem) {
     // se esta cheio retorna corrompido
     return CORROMPIDO;
 }
+//retorna o indice do ultimo cluster ocupado na tabela
+unsigned char findLastUsedCluster(FS fileSystem) {
+    unsigned short i = fileSystem.meta.tam_indice - 3 - 1;
+
+    while(i >= 0) {
+        if((unsigned char)fileSystem.indice[i] != VAZIO){
+            return i;
+        }
+        i--;
+    }
+    // se tudo incluindo root vazio retorna corrompido
+    return CORROMPIDO;
+}
 
 void OverWriteAt(FS* fileSystem, char* text, unsigned char cIndex){//Função auxiliar OverWriteAt. Recebe o fileSystem, o texto que será inserido, e o índice da tabela atual. Recursiva.
   unsigned char nextClusterIndex;//Índice do próximo cluster.
@@ -509,6 +522,89 @@ void renameFile(char* path, char* name, FS* fileSystem) {//Função renameFile. 
     }
 }
 
+//Testa se um índice está em um diretório
+int isIndexInDir(FS fileSystem, unsigned char index, unsigned char dirIndex) {
+    unsigned char c;
+    setPointerToCluster(fileSystem, dirIndex);
+    do {
+        fread(&c, sizeof(unsigned char), 1, fileSystem.arquivo);
+        if (index == c) {
+            return 1;
+        }
+    } while (c != END_OF_FILE);
+    return 0;
+}
+
+//retorna o índice do diretório pai do cluster. Caso não encontre (ex: cluster que seja parte de um arquivo multi-cluster), retorna CORROMPIDO
+unsigned char findParentDirIndex(FS fileSystem, unsigned char index) {
+    int i;
+    //percorre a tabela de indices
+    for (i = 0; i < fileSystem.meta.tam_indice - 3; i++) {
+        if (!strcmp(fileSystem.clusters[i].tipo, "dir")) {
+            //pra cada posição que é um dir, testa se esse indice está nele
+            if (isIndexInDir(fileSystem, index, i)) {
+                return i;
+            }
+        }
+    }
+    return CORROMPIDO;
+}
+
+void moveCluster(FS* fileSystem, unsigned char srcIndex, unsigned char destIndex) {
+    //lê dados do cluster
+    char* clusterData = (char*)(malloc(fileSystem->meta.tam_cluster));
+    setPointerToCluster(*fileSystem, srcIndex);
+    fread(clusterData, fileSystem->meta.tam_cluster, 1, fileSystem->arquivo);
+    //escreve metadados do cluster na pos nova
+    strcpy(fileSystem->clusters[destIndex].nome, fileSystem->clusters[srcIndex].nome);
+    strcpy(fileSystem->clusters[destIndex].tipo, fileSystem->clusters[srcIndex].tipo);
+    //escreve dados do cluster na pos nova
+    setPointerToCluster(*fileSystem, destIndex);
+    fwrite(clusterData, fileSystem->meta.tam_cluster, 1, fileSystem->arquivo);
+    //escreve o valor do indice na pos nova da tabela
+    fileSystem->indice[destIndex] = fileSystem->indice[srcIndex];
+    //escreve VAZIO na pos antiga da tabela
+    fileSystem->indice[srcIndex] = VAZIO;
+
+    //encontra indice do dir que aponta pro indice antigo desse cluster
+    unsigned char parentIndex = findParentDirIndex(*fileSystem, srcIndex);
+    if (parentIndex != CORROMPIDO) {
+        //troca esse valor na área de dados do dir pai pelo indice novo
+        setPointerToCluster(*fileSystem, parentIndex);
+        unsigned char c;
+        do {
+            fread(&c, sizeof(unsigned char), 1, fileSystem->arquivo);
+        } while (c != srcIndex);
+        fseek(fileSystem->arquivo, -1, SEEK_CUR);
+        fwrite(&destIndex, sizeof(unsigned char), 1, fileSystem->arquivo);
+    }
+    //se for um pedaço de arquivo grande...
+    else {
+        //busca qual outro arquivo de texto aponta pro indice antigo
+        for (int i = 0; i < fileSystem->meta.tam_indice - 3; i++) {
+            if (fileSystem->indice[i] == srcIndex) {
+                //troca o valor do indice desse arquivo pelo indice novo
+                fileSystem->indice[i] = destIndex;
+            }
+        }
+    }
+
+    saveFS(*fileSystem);
+}
+
+void defrag(FS* fileSystem) {
+    unsigned char emptyIndex, usedIndex;
+    int counter = 0;
+    do {
+        emptyIndex = findNextOpenCluster(*fileSystem);
+        usedIndex = findLastUsedCluster(*fileSystem);
+        if (usedIndex > emptyIndex) {
+            moveCluster(fileSystem, usedIndex, emptyIndex);
+            counter++;
+        }
+    } while (usedIndex > emptyIndex);
+    printf("Desfragmentação completa. Movidos %d arquivos\n", counter);
+    
 //Arthur: Remove um arquivo. Se for um diretório com algum conteúdo, remove em cascata
 void rf(char* path, FS* fileSystem) {
     unsigned char c,upper,lower;

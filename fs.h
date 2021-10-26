@@ -65,4 +65,9 @@ void move(char* srcPath, char* destPath, FS *fileSystem);
 
 void renameFile(char* path, char* name, FS* fileSystem);
 
+void defrag(FS* fileSystem);
+
+void rf(char* path, FS* fileSystem);
+
 void disk(FS fileSystem);
+

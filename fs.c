@@ -1,5 +1,6 @@
 #include "fs.h"
 
+
 /*
 =============== FUNÇÕES UTILITÁRIAS ===============
 */
@@ -386,7 +387,7 @@ void make(char* name, char* type, FS* fileSystem) {
     }
     unsigned char clusterIndex = findNextOpenCluster(*fileSystem);
     if (clusterIndex == CORROMPIDO){
-        printf("Seu Armazenamento está cheio!\n");
+        printf("Seu Armazenamento esta cheio!\n");
         return;
     }
 
@@ -515,27 +516,35 @@ void rm(char* path, FS* fileSystem) {
     upper = lower = VAZIO;
 
     getLastTwoIndex(path, &upper, &lower, *fileSystem);
-    if((upper != VAZIO && lower != VAZIO) && (!(strcmp("dir",fileSystem->clusters[lower].tipo) == 0) || dirIsEmpty(lower, *fileSystem))){
-        isInDir(upper, fileSystem->clusters[lower].nome, fileSystem->clusters[lower].tipo, *fileSystem);
-        fseek(fileSystem->arquivo, (long int)(-1*sizeof(char)), SEEK_CUR);
-        putc(VAZIO,fileSystem->arquivo);
+    if(upper != VAZIO && lower != VAZIO){ //Testa se os caminhos estão corretos.
+        //Testa, caso for um diretório, se ele está vazio.
+        if (!(strcmp("dir",fileSystem->clusters[lower].tipo) == 0) || dirIsEmpty(lower, *fileSystem)) {
+            isInDir(upper, fileSystem->clusters[lower].nome, fileSystem->clusters[lower].tipo, *fileSystem);
+            fseek(fileSystem->arquivo, (long int)(-1*sizeof(char)), SEEK_CUR);
+            putc(VAZIO,fileSystem->arquivo);
 
-        if(fileSystem->dirState.workingDirIndex == lower)  {
-            fileSystem->dirState.workingDirIndex = 0;
-            strcpy(fileSystem->dirState.workingDir, "root");
+            if(fileSystem->dirState.workingDirIndex == lower)  {
+                fileSystem->dirState.workingDirIndex = 0;
+                strcpy(fileSystem->dirState.workingDir, "root");
+            }
+            do {
+                upper = fileSystem->indice[lower]; //Reaproveita upper para guardar o apontador localizado na posição lower da tabela de índices.
+                fileSystem->indice[lower] = VAZIO;
+                lower = upper;
+            } while (lower != END_OF_FILE); //Certifica-se de excluir todos os clusters referentes ao arquivo.
+            saveFS(*fileSystem);
         }
-        do {
-            upper = fileSystem->indice[lower]; //Reaproveita upper para guardar o apontador localizado na posição lower da tabela de índices.
-            fileSystem->indice[lower] = VAZIO;
-            lower = upper;
-        } while (lower != END_OF_FILE); //Certifica-se de excluir todos os clusters referentes ao arquivo.
-        saveFS(*fileSystem);
+        else printf("O diretorio precisa estar vazio.\n");
     }
     else printf("Caminho Invalido.\n");
 }
 
 //Cria um dir no dir atual
 void mkdir(char* name, FS* fileSystem) {
+    int i = strlen(name);
+    if(name[i-4] == '.'){ //Caso o usuário insira um nome com fim .txt
+        name[i-4] = '\0';
+    }
     make(name, "dir", fileSystem);
 }
 
@@ -547,7 +556,7 @@ void mkfile(char* name, FS* fileSystem) {
         make(path, fileType, fileSystem);
     }
     else {
-        printf("O arquivo deve ter uma extensão!\n");
+        printf("O arquivo deve ter uma extensao!\n");
     }
 }
 
@@ -564,7 +573,7 @@ void edit(char* path, char* text, FS* fileSystem) {//Função edit. Executa o co
             OverWriteAt(fileSystem,text,originLower);//Executa função auxiliar de escrita.
             saveFS(*fileSystem);//Salva o arquivo.
         }else{
-            printf("Arquivo inválido para edição.\n");
+            printf("Arquivo invalido para edicao.\n");
         }        
     }
 }
@@ -610,7 +619,7 @@ void renameFile(char* path, char* name, FS* fileSystem) {//Função renameFile. 
         printf("Esse diretorio nao existe\n");//Prompt de erro em caso de diretório incorreto.
     }else{//Se não, caso normal:
         if(originLower == VAZIO){            
-            printf("Arquivo inválido.\n");//Prompt de erro em caso de arquivo inválido.           
+            printf("Arquivo invalido.\n");//Prompt de erro em caso de arquivo inválido.           
         }else{//Se não, caso normal:  
             if(isInDir(originUpper, name, fileSystem->clusters[originLower].tipo, *fileSystem)==VAZIO){
                 strcpy(fileSystem->clusters[originLower].nome,name);//Executa a troca de nome.
@@ -624,7 +633,7 @@ void renameFile(char* path, char* name, FS* fileSystem) {//Função renameFile. 
                 }
                 saveFS(*fileSystem);//Salva o arquivo.
             }else{
-                printf("Nome inválido para renomear. Detalhe: nome já utilizado.\n");//Prompt de erro em caso de nome inválido.
+                printf("Nome invalido para renomear. Detalhe: nome ja utilizado.\n");//Prompt de erro em caso de nome inválido.
             } 
         }
     }
@@ -642,7 +651,7 @@ void defrag(FS* fileSystem) {
             counter++;
         }
     } while (usedIndex > emptyIndex);
-    printf("Desfragmentação completa. Movidos %d arquivos\n", counter);
+    printf("Desfragmentacao completa. Movidos %d arquivos\n", counter);
 }
     
 //Remove um arquivo. Se for um diretório com algum conteúdo, remove em cascata

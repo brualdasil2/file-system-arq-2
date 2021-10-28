@@ -606,7 +606,7 @@ void move(char* srcPath, char* destPath, FS* fileSystem) {
 //Renomeia um arquivo
 void renameFile(char* path, char* name, FS* fileSystem) {//Função renameFile. Executa o comando RENAME. Recebe o caminho do arquivo, o nome novo e o fileSystem.
     unsigned char originUpper, originLower;
-    int i;
+    int i, dashFinder;
 
     getLastTwoIndex(path, &originUpper, &originLower, *fileSystem);
     
@@ -615,27 +615,38 @@ void renameFile(char* path, char* name, FS* fileSystem) {//Função renameFile. 
         name[i-4] = '\0';
     }
     
-    if(originUpper == VAZIO){//Caso o diretório não exista, executa:
-        printf("Esse diretorio nao existe\n");//Prompt de erro em caso de diretório incorreto.
-    }else{//Se não, caso normal:
-        if(originLower == VAZIO){            
-            printf("Arquivo invalido.\n");//Prompt de erro em caso de arquivo inválido.           
-        }else{//Se não, caso normal:  
-            if(isInDir(originUpper, name, fileSystem->clusters[originLower].tipo, *fileSystem)==VAZIO){
-                strcpy(fileSystem->clusters[originLower].nome,name);//Executa a troca de nome.
-                if (originLower == fileSystem->dirState.workingDirIndex) {
-                    char upperPath[MAX_PATHNAME_SIZE];
-                    char filler[MAX_FILENAME_SIZE];
-                    separatePaths(path, upperPath, filler);
-                    strcat(upperPath, "/");
-                    strcat(upperPath, name);
-                    strcpy(fileSystem->dirState.workingDir, upperPath);//Executa a troca de nome.
-                }
-                saveFS(*fileSystem);//Salva o arquivo.
-            }else{
-                printf("Nome invalido para renomear. Detalhe: nome ja utilizado.\n");//Prompt de erro em caso de nome inválido.
-            } 
+    dashFinder = 0;
+    for(i=0;i < strlen(name)+1;i++){                
+        if(name[i]=='/'){
+            dashFinder = 1;
         }
+    }
+    
+    if(!dashFinder){
+        if(originUpper == VAZIO){//Caso o diretório não exista, executa:
+            printf("Esse diretorio nao existe\n");//Prompt de erro em caso de diretório incorreto.
+        }else{//Se não, caso normal:
+            if(originLower == VAZIO){            
+                printf("Arquivo invalido.\n");//Prompt de erro em caso de arquivo inválido.           
+            }else{//Se não, caso normal:  
+                if(isInDir(originUpper, name, fileSystem->clusters[originLower].tipo, *fileSystem)==VAZIO){
+                    strcpy(fileSystem->clusters[originLower].nome,name);//Executa a troca de nome.
+                    if (originLower == fileSystem->dirState.workingDirIndex) {
+                        char upperPath[MAX_PATHNAME_SIZE];
+                        char filler[MAX_FILENAME_SIZE];
+                        separatePaths(path, upperPath, filler);
+                        strcat(upperPath, "/");
+                        strcat(upperPath, name);
+                        strcpy(fileSystem->dirState.workingDir, upperPath);//Executa a troca de nome.
+                    }
+                    saveFS(*fileSystem);//Salva o arquivo.
+                }else{
+                    printf("Nome invalido para renomear. Detalhe: nome ja utilizado.\n");//Prompt de erro em caso de nome inválido.
+                } 
+            }
+        }
+    }else{
+        printf("Nome invalido para renomear. Detalhe: nome com barras.\n");//Prompt de erro em caso de nome inválido.
     }
 }
 

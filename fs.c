@@ -218,6 +218,7 @@ void separatePaths(char* fullPath, char* path, char* itemName){
 
 //Separa o nome do arquivo da extensão
 unsigned char separateFileNameAndType(char* fullName, char** fileName, char** fileType) {
+	 if(fullName == NULL) return 0;	
     int nameSize = strlen(fullName);
     if (fullName[nameSize - EXTENSION_SIZE] != '.') {
         return 0;
@@ -229,8 +230,13 @@ unsigned char separateFileNameAndType(char* fullName, char** fileName, char** fi
     }
 }
 
-// se o nome tem uma barra retorna -1 (invalido), se nao tem retorna 1 (valido)
+// se o nome for valido, retorna -1 (invalido), se nao tem retorna 1 (valido)
 int validateName(char* name){
+	 if (name == NULL) return -1;
+	 int i = strlen(name);
+    if (name[i-EXTENSION_SIZE] == '.'){ //Caso o usuário insira um nome com fim .txt
+        name[i-EXTENSION_SIZE] = '\0';
+    }
     if (strlen(name)>MAX_FILENAME_SIZE-1) return-1;
     for(int i=0 ; i<strlen(name) ; i++){
         if (name[i] == '/'){
@@ -544,14 +550,6 @@ void rm(char* path, FS* fileSystem) {
 
 //Cria um dir no dir atual
 void mkdir(char* name, FS* fileSystem) {
-    if (name == NULL) {
-        printf("Caminho Invalido.\n");
-        return;
-    }
-    int i = strlen(name);
-    if (name != NULL && name[i-EXTENSION_SIZE] == '.'){ //Caso o usuário insira um nome com fim .txt
-        name[i-EXTENSION_SIZE] = '\0';
-    }
     make(name, "dir", fileSystem);
 }
 
@@ -559,16 +557,12 @@ void mkdir(char* name, FS* fileSystem) {
 void mkfile(char* name, FS* fileSystem) {
     char* path;
     char* fileType;
-    
-    if (name == NULL) {
-        printf("Caminho Invalido.\n");
-        return;
-    }
+
     if (separateFileNameAndType(name, &path, &fileType)) {
         make(path, fileType, fileSystem);
     }
     else {
-        printf("O arquivo deve ter uma extensao!\n");
+        printf("Nome invalido!\n");
     }
 }
 

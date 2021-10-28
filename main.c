@@ -35,20 +35,23 @@ int main() {
             mkfile(path, &fileSystem);
         }
         else if(!strcmp("EDIT",cmd)) {
-            quoteFinder = 0;
-            for(i=0;i < strlen(inputClone)+1;i++){                
-                if(inputClone[i]=='\"'){
-                    quoteFinder = 1;
+            if (strlen(inputClone)>6) {
+                quoteFinder = 0;
+                for(i=0;i < strlen(inputClone)+1;i++){                
+                    if(inputClone[i]=='\"'){
+                        quoteFinder = 1;
+                    }
                 }
-            }
-            if(quoteFinder){
-                editContent = strtok(inputClone,dQuotes);
-                editContent = strtok(NULL,dQuotes);         
-            }else{
-                editContent = strchr(inputClone,' ')+1;  
-                editContent = strchr(editContent,' ')+1;               
-            }     
-            edit(path, editContent, &fileSystem);         
+                if(quoteFinder){
+                    editContent = strtok(inputClone,dQuotes);
+                    editContent = strtok(NULL,dQuotes);         
+                }else {  
+                    editContent = strchr(inputClone,' ')+1;
+                    editContent++;
+                    editContent = strchr(editContent,' ')+1;
+                }     
+                edit(path, editContent, &fileSystem);   
+            } else printf("Termos invalidos\n");
         }
         else if(!strcmp("MOVE",cmd)) { 
             move(path, strtok(NULL,spc), &fileSystem);

@@ -231,7 +231,7 @@ unsigned char separateFileNameAndType(char* fullName, char** fileName, char** fi
 
 // se o nome tem uma barra retorna -1 (invalido), se nao tem retorna 1 (valido)
 int validateName(char* name){
-    if (strlen(name)>19) return-1;
+    if (strlen(name)>MAX_FILENAME_SIZE-1) return-1;
     for(int i=0 ; i<strlen(name) ; i++){
         if (name[i] == '/'){
             return -1;
@@ -255,9 +255,9 @@ void getLastTwoIndex(char* path,  unsigned char* upperArchiveIndex, unsigned cha
         breakPoint[0] = '\0';
         lowerArchiveName = breakPoint + 1;
 
-        if (lowerArchiveName[strlen(lowerArchiveName) - 4] == '.') {
+        if (lowerArchiveName[strlen(lowerArchiveName) - EXTENSION_SIZE] == '.') {
             strcpy(lowerArchiveType, lowerArchiveName + strlen(lowerArchiveName) - 3);
-            lowerArchiveName[strlen(lowerArchiveName) - 4] = '\0';
+            lowerArchiveName[strlen(lowerArchiveName) - EXTENSION_SIZE] = '\0';
         }
     }
 
@@ -320,7 +320,7 @@ int isIndexInDir(FS fileSystem, unsigned char index, unsigned char dirIndex) {
 unsigned char findParentDirIndex(FS fileSystem, unsigned char index) {
     int i;
     //percorre a tabela de indices
-    for (i = 0; i < fileSystem.meta.tam_indice - 3; i++) {
+    for (i = 0; i < fileSystem.meta.tam_indice - UNUSED_DIRS; i++) {
         if (!strcmp(fileSystem.clusters[i].tipo, "dir")) {
             //pra cada posição que é um dir, testa se esse indice está nele
             if (isIndexInDir(fileSystem, index, i)) {
@@ -542,8 +542,8 @@ void rm(char* path, FS* fileSystem) {
 //Cria um dir no dir atual
 void mkdir(char* name, FS* fileSystem) {
     int i = strlen(name);
-    if(name[i-4] == '.'){ //Caso o usuário insira um nome com fim .txt
-        name[i-4] = '\0';
+    if(name[i-EXTENSION_SIZE] == '.'){ //Caso o usuário insira um nome com fim .txt
+        name[i-EXTENSION_SIZE] = '\0';
     }
     make(name, "dir", fileSystem);
 }
@@ -606,23 +606,18 @@ void move(char* srcPath, char* destPath, FS* fileSystem) {
 //Renomeia um arquivo
 void renameFile(char* path, char* name, FS* fileSystem) {//Função renameFile. Executa o comando RENAME. Recebe o caminho do arquivo, o nome novo e o fileSystem.
     unsigned char originUpper, originLower;
-    int i, dashFinder;
+    int i;
 
     getLastTwoIndex(path, &originUpper, &originLower, *fileSystem);
     
     i = strlen(name);  
-    if(name[i-4] == '.'){//Caso o usuário insira um nome com fim .txt
-        name[i-4] = '\0';
+    if(name[i-EXTENSION_SIZE] == '.'){//Caso o usuário insira um nome com fim .txt
+        name[i-EXTENSION_SIZE] = '\0';
     }
     
-    dashFinder = 0;
-    for(i=0;i < strlen(name)+1;i++){                
-        if(name[i]=='/'){
-            dashFinder = 1;
-        }
-    }
     
-    if(!dashFinder){
+    
+    if (validateName(name) == 1) {
         if(originUpper == VAZIO){//Caso o diretório não exista, executa:
             printf("Esse diretorio nao existe\n");//Prompt de erro em caso de diretório incorreto.
         }else{//Se não, caso normal:
@@ -697,5 +692,5 @@ void rf(char* path, FS* fileSystem) {
 //Exibe o tamanho em kb ocupado pelo dir atual
 void disk(FS fileSystem){
     // Chama a funcao getDirSize e imprime o valor na tela
-    printf("Valor ocupado: %d Kb\n", 32 * getDirSize(fileSystem,fileSystem.dirState.workingDirIndex));
+    printf("Valor ocupado: %d Kb\n", TAM_CLUSTER/1000 * getDirSize(fileSystem,fileSystem.dirState.workingDirIndex));
 }

@@ -15,6 +15,7 @@
 #define MAX_FILENAME_SIZE 20
 #define EXTENSION_SIZE 4
 #define MAX_CHAR TAM_CLUSTER - sizeof(CLUSTER) - 1
+#define UNUSED_DIRS 3
 
 #define NOME_ARQUIVO "data.bin"
 

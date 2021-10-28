@@ -10,9 +10,7 @@ int main() {
     char input[210];
     char inputClone[210];
     char *cmd,*path,*editContent;
-    fclose(fileSystem.arquivo);
     while (1) {
-        fileSystem.arquivo = fopen(NOME_ARQUIVO, "rb+"); //Versão de debug, pra visualizar mudanças em tempo real
         printf("%s> ", fileSystem.dirState.workingDir);
         fgets(input, sizeof(input), stdin);
         input[strlen(input)-1] = '\0'; //Retira o '/n' do final
@@ -72,6 +70,5 @@ int main() {
         }
         else printf("Comando desconhecido.\n");
 
-        fclose(fileSystem.arquivo); //Versão de debug, pra visualizar mudanças em tempo real
     }
 }

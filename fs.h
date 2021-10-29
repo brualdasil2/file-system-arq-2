@@ -1,3 +1,7 @@
+/*
+Grupo: Arthur Pires, Bruno Silveira, Leonardo Alles, Tiago Schmidt
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
